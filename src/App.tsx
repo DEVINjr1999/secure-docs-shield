@@ -12,6 +12,8 @@ import DocumentList from "./pages/DocumentList";
 import DocumentEditor from "./pages/DocumentEditor";
 import DocumentViewer from "./pages/DocumentViewer";
 import DocumentUpload from "./pages/DocumentUpload";
+import ReviewerDashboard from "./pages/ReviewerDashboard";
+import ReviewerDocumentView from "./pages/ReviewerDocumentView";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -71,6 +73,22 @@ const AppRoot = () => (
               element={
                 <ProtectedRoute>
                   <DocumentViewer />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/reviewer/dashboard" 
+              element={
+                <ProtectedRoute requiredRole="legal_reviewer">
+                  <ReviewerDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/reviewer/documents/:documentId" 
+              element={
+                <ProtectedRoute requiredRole="legal_reviewer">
+                  <ReviewerDocumentView />
                 </ProtectedRoute>
               } 
             />
