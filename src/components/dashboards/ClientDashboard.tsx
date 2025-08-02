@@ -23,7 +23,7 @@ export function ClientDashboard() {
           <div className="space-y-3">
             <Button 
               className="w-full justify-start"
-              onClick={() => navigate('/app/documents/new')}
+              onClick={() => navigate('/app/upload')}
             >
               <Upload className="h-4 w-4 mr-2" />
               Upload New Document

@@ -11,6 +11,7 @@ import App from "./pages/App";
 import DocumentList from "./pages/DocumentList";
 import DocumentEditor from "./pages/DocumentEditor";
 import DocumentViewer from "./pages/DocumentViewer";
+import DocumentUpload from "./pages/DocumentUpload";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -54,6 +55,14 @@ const AppRoot = () => (
               element={
                 <ProtectedRoute>
                   <DocumentEditor />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/app/upload" 
+              element={
+                <ProtectedRoute>
+                  <DocumentUpload />
                 </ProtectedRoute>
               } 
             />
