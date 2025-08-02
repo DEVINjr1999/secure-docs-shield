@@ -630,25 +630,44 @@ export default function DocumentViewer() {
                         version.id === docId ? 'bg-primary/5 border-primary' : ''
                       }`}
                     >
-                      <div>
-                        <p className="font-medium">Version {version.version}</p>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-medium">Version {version.version}</p>
+                          {version.id === docId && (
+                            <Badge variant="secondary" className="text-xs">
+                              Current
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           {formatDate(version.created_at)}
                         </p>
+                        {version.submitted_at && (
+                          <p className="text-xs text-muted-foreground">
+                            Submitted: {formatDate(version.submitted_at)}
+                          </p>
+                        )}
                         <Badge variant={getStatusVariant(version.status)} className="mt-1">
                           {version.status.replace('_', ' ')}
                         </Badge>
                       </div>
-                      {version.id !== docId && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => navigate(`/app/documents/${version.id}`)}
-                        >
-                          <Eye className="h-4 w-4 mr-2" />
-                          View
-                        </Button>
-                      )}
+                      <div className="flex gap-2">
+                        {version.id !== docId && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/app/documents/${version.id}`)}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View
+                          </Button>
+                        )}
+                        {version.status === 'approved' && (
+                          <Badge variant="default" className="text-xs">
+                            Approved
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
