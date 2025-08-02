@@ -2,12 +2,15 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { DocumentDecryption } from '@/components/DocumentDecryption';
 import { 
   FileText, 
   ArrowLeft, 
@@ -18,16 +21,22 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  Edit
+  Edit,
+  Eye,
+  EyeOff,
+  Lock
 } from 'lucide-react';
 
 export default function DocumentViewer() {
   const { documentId } = useParams();
   const navigate = useNavigate();
   const { user, isRole } = useAuth();
+  const { toast } = useToast();
   const [document, setDocument] = useState<any>(null);
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [isInternalComment, setIsInternalComment] = useState(false);
+  const [decryptedContent, setDecryptedContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -97,13 +106,23 @@ export default function DocumentViewer() {
           document_id: documentId,
           user_id: user.id,
           comment: newComment.trim(),
-          is_internal: isRole(['admin', 'legal_reviewer']) && !isRole('client'),
+          is_internal: isInternalComment,
         });
 
       if (error) throw error;
 
       setNewComment('');
+      setIsInternalComment(false);
       loadComments();
+      
+      // Log audit event
+      await supabase.rpc('log_audit_event', {
+        p_user_id: user.id,
+        p_event: 'comment_added',
+        p_action_type: 'document',
+        p_document_id: documentId,
+        p_metadata: { comment_type: isInternalComment ? 'internal' : 'public' }
+      });
       
       toast({
         title: 'Success',
@@ -125,7 +144,7 @@ export default function DocumentViewer() {
     if (!documentId || !user) return;
 
     try {
-      const updateData: any = { status: newStatus };
+      const updateData: any = { status: newStatus, reviewed_at: new Date().toISOString() };
       
       if (newStatus === 'approved') {
         updateData.approved_at = new Date().toISOString();
@@ -140,9 +159,20 @@ export default function DocumentViewer() {
 
       if (error) throw error;
 
+      // Log audit event
+      await supabase.rpc('log_audit_event', {
+        p_user_id: user.id,
+        p_event: 'document_status_updated',
+        p_action_type: 'document',
+        p_document_id: documentId,
+        p_old_values: { status: document.status },
+        p_new_values: { status: newStatus },
+        p_metadata: { review_action: newStatus }
+      });
+
       toast({
         title: 'Success',
-        description: `Document ${newStatus} successfully`,
+        description: `Document ${newStatus.replace('_', ' ')} successfully`,
       });
 
       loadDocument();
@@ -154,6 +184,10 @@ export default function DocumentViewer() {
       });
       console.error('Error updating status:', error);
     }
+  };
+
+  const handleDecryptedContent = (content: string) => {
+    setDecryptedContent(content);
   };
 
   const getStatusVariant = (status: string) => {
@@ -257,10 +291,35 @@ export default function DocumentViewer() {
               <CardTitle className="flex items-center">
                 <FileText className="h-5 w-5 mr-2" />
                 Document Content
+                {document.encrypted_content && (
+                  <Lock className="h-4 w-4 ml-2 text-muted-foreground" />
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {document.file_name ? (
+              {document.encrypted_content && !decryptedContent ? (
+                <DocumentDecryption
+                  encryptedContent={document.encrypted_content}
+                  onDecrypted={handleDecryptedContent}
+                />
+              ) : decryptedContent ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium">Decrypted Form Data</h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDecryptedContent(null)}
+                    >
+                      <EyeOff className="h-4 w-4 mr-2" />
+                      Hide Content
+                    </Button>
+                  </div>
+                  <div className="bg-muted p-4 rounded-lg">
+                    <pre className="whitespace-pre-wrap text-sm">{decryptedContent}</pre>
+                  </div>
+                </div>
+              ) : document.file_name ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center">
@@ -284,7 +343,7 @@ export default function DocumentViewer() {
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <FileText className="h-12 w-12 mx-auto mb-4" />
-                  <p>No file content available</p>
+                  <p>No content available</p>
                 </div>
               )}
             </CardContent>
@@ -335,6 +394,20 @@ export default function DocumentViewer() {
                     onChange={(e) => setNewComment(e.target.value)}
                     className="min-h-[100px]"
                   />
+                  
+                  {isRole(['admin', 'legal_reviewer']) && (
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="internal-comment"
+                        checked={isInternalComment}
+                        onCheckedChange={setIsInternalComment}
+                      />
+                      <Label htmlFor="internal-comment" className="text-sm">
+                        Internal comment (only visible to reviewers and admins)
+                      </Label>
+                    </div>
+                  )}
+                  
                   <Button 
                     onClick={handleAddComment}
                     disabled={!newComment.trim() || submitting}
