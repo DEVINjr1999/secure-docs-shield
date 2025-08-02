@@ -176,7 +176,7 @@ export default function Auth() {
             <h1 className="text-2xl font-bold">SecureLegal</h1>
           </div>
           <p className="text-muted-foreground">
-            Secure authentication for cybersecurity-focused legal document platform
+            Your one and only secured Legal Document Platform
           </p>
         </div>
 
