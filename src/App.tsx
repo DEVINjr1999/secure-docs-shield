@@ -16,6 +16,7 @@ import ClientDashboard from "./pages/ClientDashboard";
 import ReviewerDashboard from "./pages/ReviewerDashboard";
 import ReviewerDocumentView from "./pages/ReviewerDocumentView";
 import AdminAuditLogs from "./pages/AdminAuditLogs";
+import UserSettings from "./pages/UserSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -115,6 +116,14 @@ const AppRoot = () => (
               element={
                 <ProtectedRoute requiredRole="admin">
                   <AdminAuditLogs />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/app/settings" 
+              element={
+                <ProtectedRoute>
+                  <UserSettings />
                 </ProtectedRoute>
               } 
             />
