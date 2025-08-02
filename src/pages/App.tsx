@@ -1,20 +1,16 @@
 import { useAuth } from '@/hooks/useAuth';
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
+import { ClientDashboard } from '@/components/dashboards/ClientDashboard';
+import { LegalReviewerDashboard } from '@/components/dashboards/LegalReviewerDashboard';
+import { AdminDashboard } from '@/components/dashboards/AdminDashboard';
 import { 
   Shield, 
   LogOut, 
-  User, 
-  FileText, 
-  Settings, 
-  Activity,
-  Lock,
-  Eye,
-  AlertTriangle 
+  User
 } from 'lucide-react';
 
 export default function App() {
@@ -46,9 +42,22 @@ export default function App() {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
+  const renderDashboard = () => {
+    if (!profile) return null;
+    
+    switch (profile.role) {
+      case 'admin':
+        return <AdminDashboard />;
+      case 'legal_reviewer':
+        return <LegalReviewerDashboard />;
+      case 'client':
+      default:
+        return <ClientDashboard />;
+    }
+  };
+
   return (
-    <ProtectedRoute>
-      <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
         {/* Header */}
         <header className="border-b bg-card">
           <div className="container mx-auto px-4 py-4">
@@ -83,10 +92,9 @@ export default function App() {
 
         {/* Main Content */}
         <main className="container mx-auto px-4 py-8">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            
+          <div className="space-y-6">
             {/* Welcome Card */}
-            <Card className="md:col-span-2 lg:col-span-3">
+            <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <User className="h-5 w-5 mr-2" />
@@ -152,114 +160,10 @@ export default function App() {
               </CardContent>
             </Card>
 
-            {/* Documents Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <FileText className="h-5 w-5 mr-2" />
-                  Documents
-                </CardTitle>
-                <CardDescription>
-                  Manage your legal documents
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <Button variant="outline" className="w-full justify-start">
-                    <FileText className="h-4 w-4 mr-2" />
-                    View Documents
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start">
-                    <Eye className="h-4 w-4 mr-2" />
-                    Document Templates
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Security Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Lock className="h-5 w-5 mr-2" />
-                  Security
-                </CardTitle>
-                <CardDescription>
-                  Manage your security settings
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <Button variant="outline" className="w-full justify-start">
-                    <Shield className="h-4 w-4 mr-2" />
-                    Setup MFA
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Security Settings
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Activity Card - Admin/Legal Reviewer only */}
-            {isRole(['admin', 'legal_reviewer']) && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Activity className="h-5 w-5 mr-2" />
-                    Activity
-                  </CardTitle>
-                  <CardDescription>
-                    View system activity and audit logs
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <Button variant="outline" className="w-full justify-start">
-                      <Activity className="h-4 w-4 mr-2" />
-                      Audit Logs
-                    </Button>
-                    {isRole('admin') && (
-                      <Button variant="outline" className="w-full justify-start">
-                        <AlertTriangle className="h-4 w-4 mr-2" />
-                        Security Alerts
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Admin Panel - Admin only */}
-            {isRole('admin') && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Settings className="h-5 w-5 mr-2" />
-                    Administration
-                  </CardTitle>
-                  <CardDescription>
-                    Administrative functions
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <Button variant="outline" className="w-full justify-start">
-                      <User className="h-4 w-4 mr-2" />
-                      User Management
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start">
-                      <Shield className="h-4 w-4 mr-2" />
-                      System Security
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* Role-based Dashboard */}
+            {renderDashboard()}
           </div>
         </main>
       </div>
-    </ProtectedRoute>
   );
 }
