@@ -14,13 +14,234 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      audit_logs: {
+        Row: {
+          action_type: string
+          created_at: string
+          device_info: Json | null
+          document_id: string | null
+          error_details: string | null
+          event: string
+          id: string
+          ip_address: unknown | null
+          metadata: Json | null
+          new_values: Json | null
+          old_values: Json | null
+          risk_score: number | null
+          session_id: string | null
+          success: boolean
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          device_info?: Json | null
+          document_id?: string | null
+          error_details?: string | null
+          event: string
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          new_values?: Json | null
+          old_values?: Json | null
+          risk_score?: number | null
+          session_id?: string | null
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          device_info?: Json | null
+          document_id?: string | null
+          error_details?: string | null
+          event?: string
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          new_values?: Json | null
+          old_values?: Json | null
+          risk_score?: number | null
+          session_id?: string | null
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          account_locked_until: string | null
+          account_status: string
+          avatar_url: string | null
+          created_at: string
+          deleted_at: string | null
+          email_verified_at: string | null
+          failed_login_attempts: number | null
+          full_name: string | null
+          gdpr_consent_at: string | null
+          id: string
+          is_compromised: boolean | null
+          last_activity_at: string | null
+          last_failed_login_at: string | null
+          last_login_at: string | null
+          locale: string | null
+          mfa_enabled: boolean | null
+          mfa_method: string | null
+          mfa_verified_at: string | null
+          phone: string | null
+          privacy_consent_at: string | null
+          recovery_email: string | null
+          role: string
+          session_count: number | null
+          terms_accepted_at: string | null
+          timezone: string | null
+          updated_at: string
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          account_locked_until?: string | null
+          account_status?: string
+          avatar_url?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          email_verified_at?: string | null
+          failed_login_attempts?: number | null
+          full_name?: string | null
+          gdpr_consent_at?: string | null
+          id?: string
+          is_compromised?: boolean | null
+          last_activity_at?: string | null
+          last_failed_login_at?: string | null
+          last_login_at?: string | null
+          locale?: string | null
+          mfa_enabled?: boolean | null
+          mfa_method?: string | null
+          mfa_verified_at?: string | null
+          phone?: string | null
+          privacy_consent_at?: string | null
+          recovery_email?: string | null
+          role?: string
+          session_count?: number | null
+          terms_accepted_at?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          account_locked_until?: string | null
+          account_status?: string
+          avatar_url?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          email_verified_at?: string | null
+          failed_login_attempts?: number | null
+          full_name?: string | null
+          gdpr_consent_at?: string | null
+          id?: string
+          is_compromised?: boolean | null
+          last_activity_at?: string | null
+          last_failed_login_at?: string | null
+          last_login_at?: string | null
+          locale?: string | null
+          mfa_enabled?: boolean | null
+          mfa_method?: string | null
+          mfa_verified_at?: string | null
+          phone?: string | null
+          privacy_consent_at?: string | null
+          recovery_email?: string | null
+          role?: string
+          session_count?: number | null
+          terms_accepted_at?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      user_sessions: {
+        Row: {
+          created_at: string
+          device_info: Json | null
+          expires_at: string
+          id: string
+          ip_address: unknown | null
+          is_active: boolean | null
+          last_activity_at: string
+          session_token: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_info?: Json | null
+          expires_at: string
+          id?: string
+          ip_address?: unknown | null
+          is_active?: boolean | null
+          last_activity_at?: string
+          session_token: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_info?: Json | null
+          expires_at?: string
+          id?: string
+          ip_address?: unknown | null
+          is_active?: boolean | null
+          last_activity_at?: string
+          session_token?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      increment_failed_login: {
+        Args: { p_user_id: string }
+        Returns: number
+      }
+      is_account_locked: {
+        Args: { p_user_id: string }
+        Returns: boolean
+      }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      log_audit_event: {
+        Args: {
+          p_user_id: string
+          p_event: string
+          p_action_type: string
+          p_ip_address?: unknown
+          p_user_agent?: string
+          p_session_id?: string
+          p_document_id?: string
+          p_old_values?: Json
+          p_new_values?: Json
+          p_device_info?: Json
+          p_success?: boolean
+          p_error_details?: string
+          p_metadata?: Json
+        }
+        Returns: string
+      }
+      reset_failed_login_attempts: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
