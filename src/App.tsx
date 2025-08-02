@@ -78,6 +78,14 @@ const AppRoot = () => (
               } 
             />
             <Route 
+              path="/app/documents/:id" 
+              element={
+                <ProtectedRoute>
+                  <DocumentViewer />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/app/documents/:documentId/view" 
               element={
                 <ProtectedRoute>

@@ -28,27 +28,31 @@ import {
 } from 'lucide-react';
 
 export default function DocumentViewer() {
-  const { documentId } = useParams();
+  const { documentId, id } = useParams();
+  const docId = documentId || id; // Support both route patterns
   const navigate = useNavigate();
   const { user, isRole } = useAuth();
   const { toast } = useToast();
   const [document, setDocument] = useState<any>(null);
   const [comments, setComments] = useState<any[]>([]);
+  const [versionHistory, setVersionHistory] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
   const [isInternalComment, setIsInternalComment] = useState(false);
   const [decryptedContent, setDecryptedContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
-    if (documentId) {
+    if (docId) {
       loadDocument();
       loadComments();
+      loadVersionHistory();
     }
-  }, [documentId]);
+  }, [docId]);
 
   const loadDocument = async () => {
-    if (!documentId) return;
+    if (!docId) return;
 
     try {
       const { data, error } = await supabase
@@ -58,10 +62,22 @@ export default function DocumentViewer() {
           user:user_id(id),
           assigned_reviewer:assigned_reviewer_id(id)
         `)
-        .eq('id', documentId)
+        .eq('id', docId)
         .single();
 
       if (error) throw error;
+      
+      // Check access permissions
+      if (!canAccessDocument(data)) {
+        toast({
+          title: 'Access Denied',
+          description: 'You do not have permission to view this document',
+          variant: 'destructive',
+        });
+        navigate('/app/documents');
+        return;
+      }
+      
       setDocument(data);
     } catch (error: any) {
       toast({
@@ -76,17 +92,24 @@ export default function DocumentViewer() {
   };
 
   const loadComments = async () => {
-    if (!documentId) return;
+    if (!docId) return;
 
     try {
-      const { data, error } = await supabase
+      // Filter comments based on user role
+      let query = supabase
         .from('document_comments')
         .select(`
           *,
           user:user_id(id)
         `)
-        .eq('document_id', documentId)
-        .order('created_at', { ascending: true });
+        .eq('document_id', docId);
+
+      // If user is client (not admin or reviewer), only show non-internal comments
+      if (!isRole(['admin', 'legal_reviewer'])) {
+        query = query.eq('is_internal', false);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: true });
 
       if (error) throw error;
       setComments(data || []);
@@ -95,15 +118,33 @@ export default function DocumentViewer() {
     }
   };
 
+  const loadVersionHistory = async () => {
+    if (!docId) return;
+
+    try {
+      // Get all versions (documents with same parent or this document as parent)
+      const { data, error } = await supabase
+        .from('documents')
+        .select('id, version, title, status, created_at, submitted_at')
+        .or(`id.eq.${docId},parent_document_id.eq.${docId}`)
+        .order('version', { ascending: false });
+
+      if (error) throw error;
+      setVersionHistory(data || []);
+    } catch (error: any) {
+      console.error('Error loading version history:', error);
+    }
+  };
+
   const handleAddComment = async () => {
-    if (!newComment.trim() || !user || !documentId) return;
+    if (!newComment.trim() || !user || !docId) return;
 
     setSubmitting(true);
     try {
       const { error } = await supabase
         .from('document_comments')
         .insert({
-          document_id: documentId,
+          document_id: docId,
           user_id: user.id,
           comment: newComment.trim(),
           is_internal: isInternalComment,
@@ -120,7 +161,7 @@ export default function DocumentViewer() {
         p_user_id: user.id,
         p_event: 'comment_added',
         p_action_type: 'document',
-        p_document_id: documentId,
+        p_document_id: docId,
         p_metadata: { comment_type: isInternalComment ? 'internal' : 'public' }
       });
       
@@ -141,7 +182,7 @@ export default function DocumentViewer() {
   };
 
   const handleStatusUpdate = async (newStatus: string) => {
-    if (!documentId || !user) return;
+    if (!docId || !user) return;
 
     try {
       const updateData: any = { status: newStatus, reviewed_at: new Date().toISOString() };
@@ -155,7 +196,7 @@ export default function DocumentViewer() {
       const { error } = await supabase
         .from('documents')
         .update(updateData)
-        .eq('id', documentId);
+        .eq('id', docId);
 
       if (error) throw error;
 
@@ -164,7 +205,7 @@ export default function DocumentViewer() {
         p_user_id: user.id,
         p_event: 'document_status_updated',
         p_action_type: 'document',
-        p_document_id: documentId,
+        p_document_id: docId,
         p_old_values: { status: document.status },
         p_new_values: { status: newStatus },
         p_metadata: { review_action: newStatus }
@@ -219,11 +260,57 @@ export default function DocumentViewer() {
     );
   };
 
+  const canAccessDocument = (doc: any) => {
+    if (!user || !doc) return false;
+    return (
+      isRole('admin') || // Admins can view all
+      doc.user_id === user.id || // Document owner
+      doc.assigned_reviewer_id === user.id // Assigned reviewer
+    );
+  };
+
   const canEdit = () => {
     return user && document && (
       isRole('admin') || 
       (document.user_id === user.id && ['draft', 'requires_revision'].includes(document.status))
     );
+  };
+
+  const handleSecureDownload = async () => {
+    if (!document?.file_path || !user) return;
+
+    setDownloading(true);
+    try {
+      const { data, error } = await supabase.storage
+        .from('documents')
+        .download(document.file_path);
+
+      if (error) throw error;
+
+      // Create download URL
+      const url = URL.createObjectURL(data);
+      const link = window.document.createElement('a');
+      link.href = url;
+      link.download = document.file_name || 'document';
+      window.document.body.appendChild(link);
+      link.click();
+      window.document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Success',
+        description: 'Document downloaded successfully',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Download Failed',
+        description: 'Failed to download document. Please try again.',
+        variant: 'destructive',
+      });
+      console.error('Download error:', error);
+    } finally {
+      setDownloading(false);
+    }
   };
 
   if (loading) {
@@ -272,11 +359,21 @@ export default function DocumentViewer() {
             
             {canEdit() && (
               <Button
-                onClick={() => navigate(`/app/documents/${documentId}/edit`)}
+                onClick={() => navigate(`/app/documents/${docId}/edit`)}
                 variant="outline"
               >
                 <Edit className="h-4 w-4 mr-2" />
                 Edit
+              </Button>
+            )}
+            
+            {['rejected', 'requires_revision'].includes(document.status) && document.user_id === user?.id && (
+              <Button
+                onClick={() => navigate(`/app/documents/${docId}/edit`)}
+                variant="default"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Submit New Version
               </Button>
             )}
           </div>
@@ -331,9 +428,14 @@ export default function DocumentViewer() {
                         </p>
                       </div>
                     </div>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleSecureDownload}
+                      disabled={downloading}
+                    >
                       <Download className="h-4 w-4 mr-2" />
-                      Download
+                      {downloading ? 'Downloading...' : 'Download'}
                     </Button>
                   </div>
                   <p className="text-sm text-muted-foreground">
@@ -506,6 +608,50 @@ export default function DocumentViewer() {
                   <AlertCircle className="h-4 w-4 mr-2" />
                   Request Revision
                 </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Version History */}
+          {versionHistory.length > 1 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <FileText className="h-5 w-5 mr-2" />
+                  Version History
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {versionHistory.map((version) => (
+                    <div 
+                      key={version.id} 
+                      className={`flex items-center justify-between p-3 border rounded-lg ${
+                        version.id === docId ? 'bg-primary/5 border-primary' : ''
+                      }`}
+                    >
+                      <div>
+                        <p className="font-medium">Version {version.version}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatDate(version.created_at)}
+                        </p>
+                        <Badge variant={getStatusVariant(version.status)} className="mt-1">
+                          {version.status.replace('_', ' ')}
+                        </Badge>
+                      </div>
+                      {version.id !== docId && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => navigate(`/app/documents/${version.id}`)}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           )}
