@@ -31,7 +31,7 @@ export function ClientDashboard() {
             <Button 
               variant="outline" 
               className="w-full justify-start"
-              onClick={() => navigate('/app/documents')}
+              onClick={() => navigate('/app/dashboard')}
             >
               <Eye className="h-4 w-4 mr-2" />
               View My Documents

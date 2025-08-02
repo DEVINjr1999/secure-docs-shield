@@ -12,6 +12,7 @@ import DocumentList from "./pages/DocumentList";
 import DocumentEditor from "./pages/DocumentEditor";
 import DocumentViewer from "./pages/DocumentViewer";
 import DocumentUpload from "./pages/DocumentUpload";
+import ClientDashboard from "./pages/ClientDashboard";
 import ReviewerDashboard from "./pages/ReviewerDashboard";
 import ReviewerDocumentView from "./pages/ReviewerDocumentView";
 import NotFound from "./pages/NotFound";
@@ -65,6 +66,14 @@ const AppRoot = () => (
               element={
                 <ProtectedRoute>
                   <DocumentUpload />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/app/dashboard" 
+              element={
+                <ProtectedRoute requiredRole="client">
+                  <ClientDashboard />
                 </ProtectedRoute>
               } 
             />
