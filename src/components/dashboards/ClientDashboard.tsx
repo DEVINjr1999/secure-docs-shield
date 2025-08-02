@@ -1,8 +1,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText, Upload, Eye, Download } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export function ClientDashboard() {
+  const navigate = useNavigate();
+
   return (
     <div className="grid gap-6 md:grid-cols-2">
       {/* Document Management */}
@@ -18,11 +21,18 @@ export function ClientDashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            <Button className="w-full justify-start">
+            <Button 
+              className="w-full justify-start"
+              onClick={() => navigate('/app/documents/new')}
+            >
               <Upload className="h-4 w-4 mr-2" />
               Upload New Document
             </Button>
-            <Button variant="outline" className="w-full justify-start">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => navigate('/app/documents')}
+            >
               <Eye className="h-4 w-4 mr-2" />
               View My Documents
             </Button>

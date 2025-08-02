@@ -71,6 +71,213 @@ export type Database = {
         }
         Relationships: []
       }
+      document_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string
+          document_id: string
+          id: string
+          is_active: boolean | null
+          reviewer_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by: string
+          document_id: string
+          id?: string
+          is_active?: boolean | null
+          reviewer_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string
+          document_id?: string
+          id?: string
+          is_active?: boolean | null
+          reviewer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_document_assignments_document_id"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_comments: {
+        Row: {
+          comment: string
+          created_at: string
+          document_id: string
+          id: string
+          is_internal: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          comment: string
+          created_at?: string
+          document_id: string
+          id?: string
+          is_internal?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string
+          document_id?: string
+          id?: string
+          is_internal?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_document_comments_document_id"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_templates: {
+        Row: {
+          created_at: string
+          created_by: string
+          default_content: string | null
+          description: string | null
+          document_type: Database["public"]["Enums"]["document_type"]
+          id: string
+          is_active: boolean | null
+          jurisdiction: Database["public"]["Enums"]["jurisdiction"] | null
+          name: string
+          template_schema: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          default_content?: string | null
+          description?: string | null
+          document_type: Database["public"]["Enums"]["document_type"]
+          id?: string
+          is_active?: boolean | null
+          jurisdiction?: Database["public"]["Enums"]["jurisdiction"] | null
+          name: string
+          template_schema: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          default_content?: string | null
+          description?: string | null
+          document_type?: Database["public"]["Enums"]["document_type"]
+          id?: string
+          is_active?: boolean | null
+          jurisdiction?: Database["public"]["Enums"]["jurisdiction"] | null
+          name?: string
+          template_schema?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      documents: {
+        Row: {
+          approved_at: string | null
+          assigned_reviewer_id: string | null
+          created_at: string
+          description: string | null
+          document_type: Database["public"]["Enums"]["document_type"]
+          encrypted_content: string | null
+          encryption_key_hash: string | null
+          file_mime_type: string | null
+          file_name: string | null
+          file_path: string | null
+          file_size: number | null
+          id: string
+          is_template: boolean | null
+          jurisdiction: Database["public"]["Enums"]["jurisdiction"] | null
+          metadata: Json | null
+          parent_document_id: string | null
+          rejected_at: string | null
+          reviewed_at: string | null
+          status: Database["public"]["Enums"]["document_status"]
+          submitted_at: string | null
+          template_data: Json | null
+          title: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          approved_at?: string | null
+          assigned_reviewer_id?: string | null
+          created_at?: string
+          description?: string | null
+          document_type: Database["public"]["Enums"]["document_type"]
+          encrypted_content?: string | null
+          encryption_key_hash?: string | null
+          file_mime_type?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          is_template?: boolean | null
+          jurisdiction?: Database["public"]["Enums"]["jurisdiction"] | null
+          metadata?: Json | null
+          parent_document_id?: string | null
+          rejected_at?: string | null
+          reviewed_at?: string | null
+          status?: Database["public"]["Enums"]["document_status"]
+          submitted_at?: string | null
+          template_data?: Json | null
+          title: string
+          updated_at?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          approved_at?: string | null
+          assigned_reviewer_id?: string | null
+          created_at?: string
+          description?: string | null
+          document_type?: Database["public"]["Enums"]["document_type"]
+          encrypted_content?: string | null
+          encryption_key_hash?: string | null
+          file_mime_type?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          is_template?: boolean | null
+          jurisdiction?: Database["public"]["Enums"]["jurisdiction"] | null
+          metadata?: Json | null
+          parent_document_id?: string | null
+          rejected_at?: string | null
+          reviewed_at?: string | null
+          status?: Database["public"]["Enums"]["document_status"]
+          submitted_at?: string | null
+          template_data?: Json | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_documents_parent_document_id"
+            columns: ["parent_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           account_locked_until: string | null
@@ -208,6 +415,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      auto_assign_reviewer: {
+        Args: { p_document_id: string }
+        Returns: string
+      }
       increment_failed_login: {
         Args: { p_user_id: string }
         Returns: number
@@ -244,7 +455,36 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      document_status:
+        | "draft"
+        | "submitted"
+        | "under_review"
+        | "approved"
+        | "rejected"
+        | "requires_revision"
+      document_type:
+        | "contract"
+        | "agreement"
+        | "legal_notice"
+        | "compliance_document"
+        | "litigation_document"
+        | "corporate_document"
+        | "intellectual_property"
+        | "employment_document"
+        | "real_estate_document"
+        | "other"
+      jurisdiction:
+        | "federal_australia"
+        | "nsw"
+        | "vic"
+        | "qld"
+        | "wa"
+        | "sa"
+        | "tas"
+        | "act"
+        | "nt"
+        | "international"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -371,6 +611,40 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      document_status: [
+        "draft",
+        "submitted",
+        "under_review",
+        "approved",
+        "rejected",
+        "requires_revision",
+      ],
+      document_type: [
+        "contract",
+        "agreement",
+        "legal_notice",
+        "compliance_document",
+        "litigation_document",
+        "corporate_document",
+        "intellectual_property",
+        "employment_document",
+        "real_estate_document",
+        "other",
+      ],
+      jurisdiction: [
+        "federal_australia",
+        "nsw",
+        "vic",
+        "qld",
+        "wa",
+        "sa",
+        "tas",
+        "act",
+        "nt",
+        "international",
+        "other",
+      ],
+    },
   },
 } as const

@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useNavigate } from 'react-router-dom';
 import { 
   FileText, 
   Clock, 
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 
 export function LegalReviewerDashboard() {
+  const navigate = useNavigate();
   return (
     <div className="grid gap-6">
       {/* Review Queue Stats */}
@@ -79,11 +81,18 @@ export function LegalReviewerDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <Button className="w-full justify-start">
+              <Button 
+                className="w-full justify-start"
+                onClick={() => navigate('/app/documents?status=under_review')}
+              >
                 <Eye className="h-4 w-4 mr-2" />
                 View Pending Reviews
               </Button>
-              <Button variant="outline" className="w-full justify-start">
+              <Button 
+                variant="outline" 
+                className="w-full justify-start"
+                onClick={() => navigate('/app/documents')}
+              >
                 <Search className="h-4 w-4 mr-2" />
                 Search Documents
               </Button>

@@ -8,6 +8,9 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import App from "./pages/App";
+import DocumentList from "./pages/DocumentList";
+import DocumentEditor from "./pages/DocumentEditor";
+import DocumentViewer from "./pages/DocumentViewer";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,18 +34,34 @@ const AppRoot = () => (
               } 
             />
             <Route 
-              path="/admin/*" 
+              path="/app/documents" 
               element={
-                <ProtectedRoute requiredRole="admin">
-                  <App />
+                <ProtectedRoute>
+                  <DocumentList />
                 </ProtectedRoute>
               } 
             />
             <Route 
-              path="/reviewer/*" 
+              path="/app/documents/new" 
               element={
-                <ProtectedRoute requiredRole="legal_reviewer">
-                  <App />
+                <ProtectedRoute>
+                  <DocumentEditor />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/app/documents/:documentId/edit" 
+              element={
+                <ProtectedRoute>
+                  <DocumentEditor />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/app/documents/:documentId/view" 
+              element={
+                <ProtectedRoute>
+                  <DocumentViewer />
                 </ProtectedRoute>
               } 
             />
