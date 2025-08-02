@@ -55,8 +55,10 @@ export default function DocumentEditor() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [document, setDocument] = useState<any>(null);
+  const [originalDocument, setOriginalDocument] = useState<any>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [isRevision, setIsRevision] = useState(false);
 
   const form = useForm<DocumentFormData>({
     resolver: zodResolver(documentSchema),
@@ -87,6 +89,35 @@ export default function DocumentEditor() {
 
       if (error) throw error;
 
+      // Check if user can edit this document
+      if (data.user_id !== user?.id) {
+        toast({
+          title: 'Access Denied',
+          description: 'You do not have permission to edit this document',
+          variant: 'destructive',
+        });
+        navigate('/app/documents');
+        return;
+      }
+
+      // Check if this is a revision (rejected or requires_revision status)
+      const canRevise = ['rejected', 'requires_revision'].includes(data.status);
+      setIsRevision(canRevise);
+      
+      if (canRevise) {
+        // Find the original document (root of the version chain)
+        let rootDoc = data;
+        if (data.parent_document_id) {
+          const { data: parentData } = await supabase
+            .from('documents')
+            .select('*')
+            .eq('id', data.parent_document_id)
+            .single();
+          if (parentData) rootDoc = parentData;
+        }
+        setOriginalDocument(rootDoc);
+      }
+
       setDocument(data);
       form.reset({
         title: data.title,
@@ -95,8 +126,6 @@ export default function DocumentEditor() {
         jurisdiction: data.jurisdiction || 'federal_australia',
       });
 
-      // If there's encrypted content, we would need the decryption key
-      // For now, we'll just show the metadata
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -147,6 +176,28 @@ export default function DocumentEditor() {
         encryptedContent = encryptData(JSON.stringify(formData), encryptionKey);
       }
 
+      // Determine if this is a revision
+      const isNewRevision = isRevision && document && ['rejected', 'requires_revision'].includes(document.status);
+      
+      // Calculate next version number
+      let nextVersion = 1;
+      if (isNewRevision) {
+        // Get the highest version number in the document chain
+        const parentId = originalDocument?.id || document.parent_document_id || document.id;
+        const { data: versionData } = await supabase
+          .from('documents')
+          .select('version')
+          .or(`id.eq.${parentId},parent_document_id.eq.${parentId}`)
+          .order('version', { ascending: false })
+          .limit(1);
+        
+        if (versionData && versionData.length > 0) {
+          nextVersion = versionData[0].version + 1;
+        }
+      } else if (document?.version) {
+        nextVersion = document.version;
+      }
+
       const documentData = {
         title: data.title,
         description: data.description,
@@ -162,11 +213,20 @@ export default function DocumentEditor() {
         file_mime_type: fileMimeType,
         metadata: {},
         submitted_at: isDraft ? null : new Date().toISOString(),
+        version: nextVersion,
+        parent_document_id: isNewRevision ? (originalDocument?.id || document.parent_document_id || document.id) : null,
       };
 
       let result;
-      if (documentId && documentId !== 'new') {
-        // Update existing document
+      if (isNewRevision) {
+        // Create a new document version (never update the original)
+        result = await supabase
+          .from('documents')
+          .insert([documentData])
+          .select()
+          .single();
+      } else if (documentId && documentId !== 'new') {
+        // Update existing document (only if it's not a revision)
         result = await supabase
           .from('documents')
           .update(documentData)
@@ -189,14 +249,45 @@ export default function DocumentEditor() {
         await supabase.rpc('auto_assign_reviewer', {
           p_document_id: result.data.id
         });
+
+        // Send notification for revision submissions
+        if (isNewRevision) {
+          try {
+            await supabase.functions.invoke('send-revision-notification', {
+              body: {
+                documentId: result.data.id,
+                originalDocumentId: originalDocument?.id || document.id,
+                version: nextVersion,
+                title: data.title,
+                userEmail: user.email,
+              }
+            });
+          } catch (notificationError) {
+            console.error('Failed to send notification:', notificationError);
+            // Don't fail the whole operation for notification errors
+          }
+        }
+
+        // Log audit event
+        await supabase.rpc('log_audit_event', {
+          p_user_id: user.id,
+          p_event: isNewRevision ? 'document_revision_submitted' : 'document_submitted',
+          p_action_type: 'document',
+          p_document_id: result.data.id,
+          p_metadata: {
+            version: nextVersion,
+            parent_document_id: documentData.parent_document_id,
+            is_revision: isNewRevision
+          }
+        });
       }
 
       toast({
         title: 'Success',
-        description: `Document ${isDraft ? 'saved as draft' : 'submitted'} successfully`,
+        description: `Document ${isDraft ? 'saved as draft' : isNewRevision ? 'revision submitted' : 'submitted'} successfully`,
       });
 
-      if (documentId === 'new') {
+      if (documentId === 'new' || isNewRevision) {
         navigate(`/app/documents/${result.data.id}`);
       }
 
@@ -245,28 +336,39 @@ export default function DocumentEditor() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">
-              {documentId === 'new' ? 'Create Document' : 'Edit Document'}
+              {documentId === 'new' ? 'Create Document' : 
+               isRevision ? 'Submit New Version' : 'Edit Document'}
             </h1>
             <p className="text-muted-foreground">
               {documentId === 'new' 
                 ? 'Create a new legal document with secure encryption'
+                : isRevision 
+                ? 'Submit a revised version of your document based on reviewer feedback'
                 : 'Edit your legal document'
               }
             </p>
           </div>
           
-          {document && (
-            <Badge variant={
-              document.status === 'draft' ? 'secondary' :
-              document.status === 'submitted' ? 'default' :
-              document.status === 'under_review' ? 'default' :
-              document.status === 'approved' ? 'default' :
-              document.status === 'rejected' ? 'destructive' :
-              'secondary'
-            }>
-              {document.status.replace('_', ' ').toUpperCase()}
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {document && (
+              <Badge variant={
+                document.status === 'draft' ? 'secondary' :
+                document.status === 'submitted' ? 'default' :
+                document.status === 'under_review' ? 'default' :
+                document.status === 'approved' ? 'default' :
+                document.status === 'rejected' ? 'destructive' :
+                document.status === 'requires_revision' ? 'destructive' :
+                'secondary'
+              }>
+                {document.status.replace('_', ' ').toUpperCase()}
+              </Badge>
+            )}
+            {isRevision && (
+              <Badge variant="outline">
+                Version {document?.version || 1} Revision
+              </Badge>
+            )}
+          </div>
         </div>
       </div>
 
@@ -393,7 +495,7 @@ export default function DocumentEditor() {
                     
                     <Button type="submit" disabled={saving}>
                       {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
-                      Submit for Review
+                      {isRevision ? 'Submit Revision' : 'Submit for Review'}
                     </Button>
                   </div>
                 </form>
