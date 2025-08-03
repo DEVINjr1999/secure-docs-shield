@@ -26,17 +26,36 @@ export default function MfaSetup() {
     try {
       setIsLoading(true);
       
+      // First, clean up any existing TOTP factors to prevent name conflicts
+      console.log('Checking for existing MFA factors...');
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      
+      if (factors?.totp && factors.totp.length > 0) {
+        console.log('Found existing TOTP factors, cleaning up:', factors.totp.length);
+        for (const factor of factors.totp) {
+          console.log('Unenrolling factor:', factor.id);
+          await supabase.auth.mfa.unenroll({ factorId: factor.id });
+        }
+        toast({
+          title: "Info",
+          description: "Cleaned up existing MFA factors. Setting up new one...",
+        });
+      }
+      
       // Use Supabase native MFA enrollment
+      console.log('Enrolling new TOTP factor...');
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: 'totp',
         friendlyName: 'LegalDoc Authenticator'
       });
 
       if (error) {
+        console.error('MFA enrollment error:', error);
         throw error;
       }
 
       if (data) {
+        console.log('MFA enrollment successful, factor ID:', data.id);
         setQrCodeUrl(data.totp.qr_code);
         setFactorId(data.id);
       }
@@ -44,7 +63,7 @@ export default function MfaSetup() {
       console.error('Error generating TOTP secret:', error);
       toast({
         title: "Error",
-        description: "Failed to generate MFA setup. Please try again.",
+        description: error.message || "Failed to generate MFA setup. Please try again.",
         variant: "destructive"
       });
     } finally {
