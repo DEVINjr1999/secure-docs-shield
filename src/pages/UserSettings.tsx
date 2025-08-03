@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Shield, Key, Trash2, Eye, EyeOff, User, Mail, Phone, Globe, Calendar, Monitor, Smartphone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import TwoFactorAuthSettings from "@/components/TwoFactorAuthSettings";
 
 interface UserSession {
   id: string;
@@ -429,26 +430,7 @@ export default function UserSettings() {
             <Separator />
 
             {/* MFA Settings */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Two-Factor Authentication</h3>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">2FA Status</p>
-                  <p className="text-sm text-muted-foreground">
-                    {profile.mfa_enabled ? "Two-factor authentication is enabled" : "Two-factor authentication is disabled"}
-                  </p>
-                </div>
-                <Badge variant={profile.mfa_enabled ? "default" : "secondary"}>
-                  {profile.mfa_enabled ? "Enabled" : "Disabled"}
-                </Badge>
-              </div>
-              
-              {profile.mfa_method && (
-                <p className="text-sm text-muted-foreground">
-                  Method: {profile.mfa_method}
-                </p>
-              )}
-            </div>
+            <TwoFactorAuthSettings profile={profile} />
           </CardContent>
         </Card>
 
