@@ -193,7 +193,9 @@ export default function TwoFactorAuthSettings({ profile }: TwoFactorAuthSettings
       const { error } = await updateProfile({
         mfa_enabled: true,
         mfa_method: 'totp',
-        mfa_verified_at: new Date().toISOString()
+        mfa_verified_at: new Date().toISOString(),
+        mfa_secret: totpSecret,
+        backup_codes: backupCodes
       });
 
       if (error) {
@@ -234,10 +236,40 @@ export default function TwoFactorAuthSettings({ profile }: TwoFactorAuthSettings
 
     setIsDisabling(true);
     try {
+      // Verify the stored MFA secret first
+      if (profile.mfa_secret) {
+        try {
+          const isValid = authenticator.verify({
+            token: disableCode,
+            secret: profile.mfa_secret
+          });
+
+          if (!isValid) {
+            toast({
+              title: "Error",
+              description: "Invalid verification code. Please try again.",
+              variant: "destructive"
+            });
+            setIsDisabling(false);
+            return;
+          }
+        } catch (error) {
+          toast({
+            title: "Error",
+            description: "Error verifying code. Please try again.",
+            variant: "destructive"
+          });
+          setIsDisabling(false);
+          return;
+        }
+      }
+
       const { error } = await updateProfile({
         mfa_enabled: false,
         mfa_method: null,
-        mfa_verified_at: null
+        mfa_verified_at: null,
+        mfa_secret: null,
+        backup_codes: null
       });
 
       if (error) {

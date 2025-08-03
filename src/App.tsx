@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -22,15 +23,17 @@ import NotFound from "./pages/NotFound";
 import Unauthorized from "./pages/Unauthorized";
 import Suspended from "./pages/Suspended";
 import MfaSetup from "./pages/MfaSetup";
+import MfaVerification from "./pages/MfaVerification";
 
 const queryClient = new QueryClient();
 
 const AppRoot = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
+    <ErrorBoundary>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
@@ -142,13 +145,15 @@ const AppRoot = () => (
             <Route path="/unauthorized" element={<Unauthorized />} />
             <Route path="/auth/suspended" element={<Suspended />} />
             <Route path="/mfa/setup" element={<MfaSetup />} />
+            <Route path="/mfa/verify" element={<MfaVerification />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
-  </QueryClientProvider>
+  </ErrorBoundary>
+</QueryClientProvider>
 );
 
 export default AppRoot;

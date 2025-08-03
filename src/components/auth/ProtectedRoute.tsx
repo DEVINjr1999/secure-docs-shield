@@ -49,7 +49,13 @@ export function ProtectedRoute({
 
     // Check MFA requirements
     const needsMFA = requireMFA || requiresMFA();
-    if (needsMFA && !profile.mfa_verified_at) {
+    if (needsMFA && profile.mfa_enabled && !profile.mfa_verified_at) {
+      navigate('/mfa/verify', { 
+        state: { from: location.pathname },
+        replace: true 
+      });
+      return;
+    } else if (needsMFA && !profile.mfa_enabled) {
       navigate('/mfa/setup', { 
         state: { from: location.pathname },
         replace: true 
@@ -73,7 +79,7 @@ export function ProtectedRoute({
   // Show content if all checks pass
   if (user && profile.account_status === 'active') {
     const needsMFA = requireMFA || requiresMFA();
-    if (!needsMFA || profile.mfa_verified_at) {
+    if (!needsMFA || !profile.mfa_enabled || profile.mfa_verified_at) {
       const hasRequiredRole = !requiredRole || isRole(requiredRole);
       if (hasRequiredRole) {
         return <>{children}</>;
