@@ -414,14 +414,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
-      await logAuditEvent('logout', 'auth', true);
+      console.log('Starting signOut process...');
+      
+      // Clear local state first
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      
+      console.log('Local state cleared, calling supabase signOut...');
       const { error } = await supabase.auth.signOut();
       
       if (error) {
         console.error('Error signing out:', error);
+        throw error;
       }
+      
+      console.log('SignOut successful');
+      
+      // Try to log audit event but don't block on it
+      try {
+        await logAuditEvent('logout', 'auth', true);
+      } catch (auditError) {
+        console.warn('Failed to log audit event:', auditError);
+      }
+      
     } catch (error) {
       console.error('Error during sign out:', error);
+      // Still clear local state even if signOut failed
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      throw error;
     }
   };
 
