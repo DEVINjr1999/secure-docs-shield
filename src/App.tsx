@@ -32,9 +32,9 @@ const AppRoot = () => (
     <ErrorBoundary>
       <AuthProvider>
         <TooltipProvider>
-          <Toaster />
-          <Sonner />
-        <BrowserRouter>
+          <BrowserRouter>
+            <Toaster />
+            <Sonner />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
@@ -149,11 +149,11 @@ const AppRoot = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </ErrorBoundary>
-</QueryClientProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </ErrorBoundary>
+  </QueryClientProvider>
 );
 
 export default AppRoot;
