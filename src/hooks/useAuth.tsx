@@ -117,33 +117,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch user profile
+  // Fetch user profile using secure function
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
     try {
       console.log('fetchProfile: Attempting to fetch profile for userId:', userId);
       
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Profile fetch timeout')), 5000);
+      // Use the secure function instead of direct table query
+      const { data, error } = await supabase.rpc('get_user_profile', {
+        p_user_id: userId
       });
-      
-      const queryPromise = supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
 
-      const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
-
-      console.log('fetchProfile: Query response - data:', data, 'error:', error);
+      console.log('fetchProfile: RPC response - data:', data, 'error:', error);
 
       if (error) {
-        console.error('Error fetching profile:', error);
+        console.error('Error fetching profile via RPC:', error);
         return null;
       }
 
-      console.log('fetchProfile: Profile data received:', data);
-      return data;
+      // The RPC returns an array, get the first item
+      const profile = data && data.length > 0 ? data[0] : null;
+      console.log('fetchProfile: Profile data received:', profile);
+      return profile;
     } catch (error) {
       console.error('Error fetching profile (caught):', error);
       return null;
@@ -193,39 +187,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           }
 
-          // Fetch profile - temporarily create a mock profile to bypass hanging issue
-          console.log('Creating temporary profile to bypass fetch issue');
-          const mockProfile: Profile = {
-            id: crypto.randomUUID(),
-            user_id: session.user.id,
-            full_name: session.user.email || 'User',
-            role: 'client',
-            account_status: 'active',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            deleted_at: null,
-            session_count: 0,
-            last_activity_at: null,
-            last_login_at: new Date().toISOString(),
-            gdpr_consent_at: null,
-            privacy_consent_at: null,
-            mfa_enabled: false,
-            locale: 'en',
-            username: null,
-            avatar_url: null,
-            phone: null,
-            recovery_email: null,
-            terms_accepted_at: null,
-            mfa_method: null,
-            email_verified_at: null,
-            is_compromised: false,
-            account_locked_until: null,
-            last_failed_login_at: null,
-            timezone: 'UTC',
-            failed_login_attempts: 0,
-            mfa_verified_at: null
-          };
-          setProfile(mockProfile);
+          // Fetch profile using secure function
+          const userProfile = await fetchProfile(session.user.id);
+          console.log('Profile fetched:', userProfile);
+          setProfile(userProfile);
 
           // Log successful authentication
           if (event === 'SIGNED_IN') {
@@ -256,40 +221,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        console.log('Existing session found, creating profile...');
-        // Use the same mock profile approach for existing sessions
-        const mockProfile: Profile = {
-          id: crypto.randomUUID(),
-          user_id: session.user.id,
-          full_name: session.user.email || 'User',
-          role: 'client',
-          account_status: 'active',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          deleted_at: null,
-          session_count: 0,
-          last_activity_at: null,
-          last_login_at: new Date().toISOString(),
-          gdpr_consent_at: null,
-          privacy_consent_at: null,
-          mfa_enabled: false,
-          locale: 'en',
-          username: null,
-          avatar_url: null,
-          phone: null,
-          recovery_email: null,
-          terms_accepted_at: null,
-          mfa_method: null,
-          email_verified_at: null,
-          is_compromised: false,
-          account_locked_until: null,
-          last_failed_login_at: null,
-          timezone: 'UTC',
-          failed_login_attempts: 0,
-          mfa_verified_at: null
-        };
-        setProfile(mockProfile);
-        setLoading(false);
+        console.log('Existing session found, fetching profile...');
+        fetchProfile(session.user.id).then((profile) => {
+          console.log('Profile from existing session:', profile);
+          setProfile(profile);
+          setLoading(false);
+        });
       } else {
         setLoading(false);
       }

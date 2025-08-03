@@ -419,6 +419,39 @@ export type Database = {
         Args: { p_document_id: string }
         Returns: string
       }
+      get_user_profile: {
+        Args: { p_user_id: string }
+        Returns: {
+          id: string
+          user_id: string
+          full_name: string
+          role: string
+          account_status: string
+          created_at: string
+          updated_at: string
+          deleted_at: string
+          session_count: number
+          last_activity_at: string
+          last_login_at: string
+          gdpr_consent_at: string
+          privacy_consent_at: string
+          mfa_enabled: boolean
+          locale: string
+          username: string
+          avatar_url: string
+          phone: string
+          recovery_email: string
+          terms_accepted_at: string
+          mfa_method: string
+          email_verified_at: string
+          is_compromised: boolean
+          account_locked_until: string
+          last_failed_login_at: string
+          timezone: string
+          failed_login_attempts: number
+          mfa_verified_at: string
+        }[]
+      }
       increment_failed_login: {
         Args: { p_user_id: string }
         Returns: number
