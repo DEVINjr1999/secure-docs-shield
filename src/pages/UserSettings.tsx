@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Shield, Key, Trash2, Eye, EyeOff, User, Mail, Phone, Globe, Calendar, Monitor, Smartphone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { MfaSettings } from "@/components/auth/MfaSettings";
 
 
 interface UserSession {
@@ -426,6 +427,11 @@ export default function UserSettings() {
                 Change Password
               </Button>
             </div>
+
+            <Separator />
+
+            {/* Two-Factor Authentication */}
+            <MfaSettings />
           </CardContent>
         </Card>
 

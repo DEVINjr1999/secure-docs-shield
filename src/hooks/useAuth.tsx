@@ -11,13 +11,14 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  signIn: (email: string, password: string, rememberMe?: boolean) => Promise<{ error: any }>;
+  signIn: (email: string, password: string, rememberMe?: boolean) => Promise<{ error: any; requiresMfa?: boolean; user?: User; session?: Session }>;
   signUp: (email: string, password: string, fullName: string, captchaToken?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: any }>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: any }>;
   refreshProfile: () => Promise<void>;
   isRole: (role: string | string[]) => boolean;
+  verifyMfa: (code: string, isBackupCode?: boolean) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -170,7 +171,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       last_failed_login_at: null,
       timezone: 'UTC',
       failed_login_attempts: 0,
-      mfa_verified_at: null
+      mfa_verified_at: null,
+      mfa_secret: null,
+      mfa_backup_codes: null
     };
     
     console.log('fetchProfile: Using fallback profile');
@@ -405,6 +408,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error };
       }
 
+      // Check if user has MFA enabled
+      if (data.user) {
+        try {
+          // Get user profile to check MFA status
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('mfa_enabled')
+            .eq('user_id', data.user.id)
+            .single();
+
+          if (profileData?.mfa_enabled) {
+            // Return special status to indicate MFA verification needed
+            return { 
+              error: null, 
+              requiresMfa: true, 
+              user: data.user,
+              session: data.session 
+            };
+          }
+        } catch (mfaCheckError) {
+          console.warn('Failed to check MFA status:', mfaCheckError);
+        }
+      }
+
       return { error: null };
     } catch (error: any) {
       await logAuditEvent('login_error', 'auth', false, error.message);
@@ -581,6 +608,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return profile.role === role;
   };
 
+  const verifyMfa = async (code: string, isBackupCode: boolean = false) => {
+    try {
+      const { data, error } = await supabase.rpc('verify_mfa_code', {
+        p_code: code,
+        p_is_backup_code: isBackupCode
+      });
+
+      if (error) throw error;
+
+      const response = data as { success: boolean; error?: string };
+
+      if (!response.success) {
+        await logAuditEvent('mfa_verification_failed', 'mfa', false, response.error);
+        return { error: { message: response.error || 'MFA verification failed' } };
+      }
+
+      await logAuditEvent('mfa_verification_success', 'mfa', true);
+      return { error: null };
+    } catch (error: any) {
+      await logAuditEvent('mfa_verification_error', 'mfa', false, error.message);
+      return { error };
+    }
+  };
+
 
   const value = {
     user,
@@ -594,6 +645,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     updateProfile,
     refreshProfile,
     isRole,
+    verifyMfa,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

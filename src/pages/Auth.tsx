@@ -11,9 +11,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, Eye, EyeOff, Shield, Lock, AlertTriangle } from 'lucide-react';
 import ReCAPTCHA from 'react-google-recaptcha';
+import { MfaVerification } from '@/components/auth/MfaVerification';
 
 export default function Auth() {
-  const { user, signIn, signUp, resetPassword, loading } = useAuth();
+  const { user, signIn, signUp, resetPassword, loading, verifyMfa } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -22,6 +23,10 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  
+  // MFA state
+  const [showMfaVerification, setShowMfaVerification] = useState(false);
+  const [pendingUser, setPendingUser] = useState<any>(null);
   
   // Form states
   const [email, setEmail] = useState('');
@@ -68,14 +73,21 @@ export default function Auth() {
     setError('');
 
     try {
-      const { error } = await signIn(email, password, rememberMe);
+      const result = await signIn(email, password, rememberMe);
       
-      if (error) {
-        setError(error.message);
+      if (result.error) {
+        setError(result.error.message);
         toast({
           title: "Sign In Failed",
-          description: error.message,
+          description: result.error.message,
           variant: "destructive",
+        });
+      } else if (result.requiresMfa) {
+        setPendingUser(result.user);
+        setShowMfaVerification(true);
+        toast({
+          title: "MFA Required",
+          description: "Please enter your authentication code.",
         });
       } else {
         toast({
@@ -88,6 +100,20 @@ export default function Auth() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleMfaSuccess = () => {
+    setShowMfaVerification(false);
+    setPendingUser(null);
+    toast({
+      title: "Success",
+      description: "Authentication completed successfully!",
+    });
+  };
+
+  const handleMfaCancel = () => {
+    setShowMfaVerification(false);
+    setPendingUser(null);
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -186,6 +212,18 @@ export default function Auth() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (showMfaVerification && pendingUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <MfaVerification
+          onSuccess={handleMfaSuccess}
+          onCancel={handleMfaCancel}
+          userEmail={pendingUser.email || ''}
+        />
       </div>
     );
   }
