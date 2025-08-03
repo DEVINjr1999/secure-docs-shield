@@ -23,8 +23,6 @@ import UserSettings from "./pages/UserSettings";
 import NotFound from "./pages/NotFound";
 import Unauthorized from "./pages/Unauthorized";
 import Suspended from "./pages/Suspended";
-import MfaSetup from "./pages/MfaSetup";
-import MfaVerification from "./pages/MfaVerification";
 
 const queryClient = new QueryClient();
 
@@ -146,8 +144,6 @@ const AppRoot = () => (
             />
             <Route path="/unauthorized" element={<Unauthorized />} />
             <Route path="/auth/suspended" element={<Suspended />} />
-            <Route path="/mfa/setup" element={<MfaSetup />} />
-            <Route path="/mfa/verify" element={<MfaVerification />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

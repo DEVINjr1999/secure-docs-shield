@@ -18,7 +18,6 @@ interface AuthContextType {
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: any }>;
   refreshProfile: () => Promise<void>;
   isRole: (role: string | string[]) => boolean;
-  requiresMFA: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -561,17 +560,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return profile.role === role;
   };
 
-  const requiresMFA = (): boolean => {
-    if (!profile) return false;
-    
-    // Admin and legal_reviewer roles require MFA
-    if (['admin', 'legal_reviewer'].includes(profile.role)) {
-      return true;
-    }
-    
-    // Check if user has explicitly enabled MFA
-    return profile.mfa_enabled;
-  };
 
   const value = {
     user,
@@ -585,7 +573,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     updateProfile,
     refreshProfile,
     isRole,
-    requiresMFA,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

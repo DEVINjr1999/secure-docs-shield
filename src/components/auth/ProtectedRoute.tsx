@@ -6,15 +6,13 @@ import { Loader2 } from 'lucide-react';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRole?: string | string[];
-  requireMFA?: boolean;
 }
 
 export function ProtectedRoute({ 
   children, 
-  requiredRole,
-  requireMFA = false 
+  requiredRole
 }: ProtectedRouteProps) {
-  const { user, profile, loading, isRole, requiresMFA } = useAuth();
+  const { user, profile, loading, isRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -47,22 +45,7 @@ export function ProtectedRoute({
       return;
     }
 
-    // Check MFA requirements
-    const needsMFA = requireMFA || requiresMFA();
-    if (needsMFA && profile.mfa_enabled && !profile.mfa_verified_at) {
-      navigate('/mfa/verify', { 
-        state: { from: location.pathname },
-        replace: true 
-      });
-      return;
-    } else if (needsMFA && !profile.mfa_enabled) {
-      navigate('/mfa/setup', { 
-        state: { from: location.pathname },
-        replace: true 
-      });
-      return;
-    }
-  }, [user, profile, loading, navigate, location, requiredRole, requireMFA, isRole, requiresMFA]);
+  }, [user, profile, loading, navigate, location, requiredRole, isRole]);
 
   // Show loading state
   if (loading || !profile) {
@@ -78,12 +61,9 @@ export function ProtectedRoute({
 
   // Show content if all checks pass
   if (user && profile.account_status === 'active') {
-    const needsMFA = requireMFA || requiresMFA();
-    if (!needsMFA || !profile.mfa_enabled || profile.mfa_verified_at) {
-      const hasRequiredRole = !requiredRole || isRole(requiredRole);
-      if (hasRequiredRole) {
-        return <>{children}</>;
-      }
+    const hasRequiredRole = !requiredRole || isRole(requiredRole);
+    if (hasRequiredRole) {
+      return <>{children}</>;
     }
   }
 
