@@ -19,10 +19,12 @@ export function ProtectedRoute({
   const location = useLocation();
 
   useEffect(() => {
+    console.log('ProtectedRoute: loading=', loading, 'user=', !!user, 'profile=', !!profile);
     if (loading) return;
 
     // Redirect to auth if not authenticated
     if (!user) {
+      console.log('ProtectedRoute: No user, redirecting to auth');
       navigate('/auth', { 
         state: { from: location.pathname },
         replace: true 

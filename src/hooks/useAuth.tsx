@@ -120,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Fetch user profile
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
     try {
+      console.log('fetchProfile: Attempting to fetch profile for userId:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -131,6 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null;
       }
 
+      console.log('fetchProfile: Profile data received:', data);
       return data;
     } catch (error) {
       console.error('Error fetching profile:', error);
