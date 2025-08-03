@@ -171,7 +171,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       last_failed_login_at: null,
       timezone: 'UTC',
       failed_login_attempts: 0,
-      mfa_verified_at: null
+      mfa_verified_at: null,
+      mfa_secret: null,
+      backup_codes: null
     };
     
     console.log('fetchProfile: Using fallback profile');
