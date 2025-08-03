@@ -37,6 +37,16 @@ const uploadSchema = z.object({
     'federal_australia', 'nsw', 'vic', 'qld', 'wa', 'sa', 
     'tas', 'act', 'nt', 'international', 'other'
   ]).optional(),
+  encryption_mode: z.enum(['auto', 'custom']),
+  custom_encryption_key: z.string().optional(),
+}).refine((data) => {
+  if (data.encryption_mode === 'custom') {
+    return data.custom_encryption_key && data.custom_encryption_key.length >= 32;
+  }
+  return true;
+}, {
+  message: "Custom encryption key must be at least 32 characters long",
+  path: ["custom_encryption_key"],
 });
 
 type UploadFormData = z.infer<typeof uploadSchema>;
@@ -68,11 +78,13 @@ export default function DocumentUpload() {
       template_id: preselectedTemplate || undefined,
       document_type: 'other',
       jurisdiction: 'federal_australia',
+      encryption_mode: 'auto',
     },
   });
 
   const uploadType = form.watch('upload_type');
   const templateId = form.watch('template_id');
+  const encryptionMode = form.watch('encryption_mode');
 
   // Helper functions for enhanced template system
   const toggleGroup = (groupName: string) => {
@@ -303,8 +315,10 @@ export default function DocumentUpload() {
 
     setUploading(true);
     try {
-      // Generate encryption key
-      const encryptionKey = generateDocumentKey(user.id, Date.now().toString());
+      // Use custom key or generate one
+      const encryptionKey = data.encryption_mode === 'custom' && data.custom_encryption_key
+        ? data.custom_encryption_key
+        : generateDocumentKey(user.id, Date.now().toString());
       const encryptionKeyHash = hashKey(encryptionKey);
 
       let encryptedContent = '';
@@ -366,9 +380,15 @@ export default function DocumentUpload() {
       });
 
       // Show encryption key to user instead of navigating immediately
-      setGeneratedKey(encryptionKey);
-      setUploadedDocumentTitle(data.title);
-      setShowEncryptionKey(true);
+      // Only show key if it was auto-generated
+      if (data.encryption_mode === 'auto') {
+        setGeneratedKey(encryptionKey);
+        setUploadedDocumentTitle(data.title);
+        setShowEncryptionKey(true);
+      } else {
+        // For custom keys, go directly to success
+        handleContinueAfterKeyDisplay();
+      }
     } catch (error: any) {
       console.error('Upload error:', error);
       toast({
@@ -574,6 +594,86 @@ export default function DocumentUpload() {
 
           {/* Template Form Fields */}
           {uploadType === 'template' && selectedTemplate && renderTemplateFields()}
+
+          {/* Encryption Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Encryption Settings
+              </CardTitle>
+              <CardDescription>
+                Choose how your document will be encrypted for security
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="encryption_mode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        className="space-y-4"
+                      >
+                        <div className="flex items-start space-x-3 border rounded-lg p-4">
+                          <RadioGroupItem value="auto" id="auto-encrypt" className="mt-1" />
+                          <Label htmlFor="auto-encrypt" className="flex-1 cursor-pointer">
+                            <div>
+                              <div className="font-medium">Auto-generate encryption key (Recommended)</div>
+                              <div className="text-sm text-muted-foreground mt-1">
+                                We'll generate a secure encryption key and show it to you after upload. 
+                                This is the most secure option for most users.
+                              </div>
+                            </div>
+                          </Label>
+                        </div>
+                        
+                        <div className="flex items-start space-x-3 border rounded-lg p-4">
+                          <RadioGroupItem value="custom" id="custom-encrypt" className="mt-1" />
+                          <Label htmlFor="custom-encrypt" className="flex-1 cursor-pointer">
+                            <div>
+                              <div className="font-medium">Use my own encryption key</div>
+                              <div className="text-sm text-muted-foreground mt-1">
+                                Provide your own encryption key. You'll be responsible for keeping it safe.
+                                Key must be at least 32 characters long.
+                              </div>
+                            </div>
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {encryptionMode === 'custom' && (
+                <FormField
+                  control={form.control}
+                  name="custom_encryption_key"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Custom Encryption Key *</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="password"
+                          placeholder="Enter your encryption key (minimum 32 characters)"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        This key will be used to encrypt your document. Make sure to remember it as you'll need it to decrypt the document later.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </CardContent>
+          </Card>
 
           {/* Document Metadata */}
           <Card>
