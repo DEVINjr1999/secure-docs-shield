@@ -270,6 +270,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_assigned_reviewer"
+            columns: ["assigned_reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
             foreignKeyName: "fk_documents_parent_document_id"
             columns: ["parent_document_id"]
             isOneToOne: false
