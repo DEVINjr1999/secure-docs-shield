@@ -59,130 +59,144 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-3 sm:py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
-              <Shield className="h-5 w-5 sm:h-6 sm:w-6 text-primary flex-shrink-0" />
-              <h1 className="text-lg sm:text-xl font-semibold truncate">SecureLegal Platform</h1>
+      {/* Optimized Header with better mobile layout */}
+      <header className="border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center justify-between gap-4">
+            {/* Logo and Title - Optimized for mobile */}
+            <div className="flex items-center space-x-3 min-w-0 flex-1">
+              <Shield className="h-6 w-6 text-primary flex-shrink-0" />
+              <h1 className="text-xl font-semibold truncate">SecureLegal</h1>
             </div>
             
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              <div className="hidden sm:flex items-center space-x-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={profile?.avatar_url} />
-                  <AvatarFallback>{getInitials(profile?.full_name)}</AvatarFallback>
-                </Avatar>
-                <div className="text-sm">
-                  <p className="font-medium truncate max-w-32">{profile?.full_name || user?.email}</p>
+            {/* User Info and Actions - Optimized layout */}
+            <div className="flex items-center gap-3">
+              {/* Desktop User Info */}
+              <div className="hidden md:flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-sm font-medium truncate max-w-32">
+                    {profile?.full_name || user?.email}
+                  </p>
                   <Badge variant={getRoleBadgeVariant(profile?.role || 'client')} className="text-xs">
                     {profile?.role || 'client'}
                   </Badge>
                 </div>
-              </div>
-              
-              {/* Mobile user info */}
-              <div className="sm:hidden">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={profile?.avatar_url} />
                   <AvatarFallback>{getInitials(profile?.full_name)}</AvatarFallback>
                 </Avatar>
               </div>
               
+              {/* Mobile Avatar Only */}
+              <div className="md:hidden">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={profile?.avatar_url} />
+                  <AvatarFallback>{getInitials(profile?.full_name)}</AvatarFallback>
+                </Avatar>
+              </div>
+              
+              {/* Logout Button - More visible */}
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={handleSignOut}
-                className="flex items-center bg-background border-border hover:bg-accent"
+                className="shrink-0 bg-background border-border hover:bg-accent hover:text-accent-foreground"
               >
-                <LogOut className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Sign Out</span>
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">Logout</span>
               </Button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-4 sm:py-6 lg:py-8">
-        <div className="space-y-4 sm:space-y-6">
-          {/* Welcome Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <User className="h-5 w-5 mr-2" />
-                  Welcome back, {profile?.full_name || 'User'}
-                </CardTitle>
-                <CardDescription>
-                  Secure cybersecurity-focused legal document platform
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-4 sm:p-6">
-                <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
-                  <div>
-                    <h4 className="font-medium mb-2">Account Status</h4>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Account Status:</span>
-                        <Badge variant={profile?.account_status === 'active' ? 'default' : 'destructive'}>
-                          {profile?.account_status}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Email Verified:</span>
-                        <Badge variant={profile?.email_verified_at ? 'default' : 'destructive'}>
-                          {profile?.email_verified_at ? 'Yes' : 'No'}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">MFA Enabled:</span>
-                        <Badge variant={profile?.mfa_enabled ? 'default' : 'secondary'}>
-                          {profile?.mfa_enabled ? 'Yes' : 'No'}
-                        </Badge>
-                      </div>
-                    </div>
+      {/* Optimized Main Content with better spacing */}
+      <main className="container mx-auto px-4 py-6 space-y-6">
+        {/* Quick Actions Bar */}
+        <div className="flex flex-wrap gap-2 p-4 bg-card rounded-lg border">
+          <Button variant="default" size="sm" className="flex-1 sm:flex-none">
+            <User className="h-4 w-4 mr-2" />
+            Dashboard
+          </Button>
+          {profile?.role === 'client' && (
+            <>
+              <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
+                New Document
+              </Button>
+              <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
+                Upload File
+              </Button>
+            </>
+          )}
+        </div>
+
+        {/* Welcome Card - Simplified and mobile-optimized */}
+        <Card className="animate-fade-in">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center text-lg">
+              <User className="h-5 w-5 mr-2" />
+              Welcome back, {profile?.full_name || 'User'}
+            </CardTitle>
+            <CardDescription>
+              Secure legal document platform
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {/* Account Status - Simplified */}
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm">Account Status</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Status:</span>
+                    <Badge variant={profile?.account_status === 'active' ? 'default' : 'destructive'}>
+                      {profile?.account_status}
+                    </Badge>
                   </div>
-                  
-                  <div>
-                    <h4 className="font-medium mb-2">Security Info</h4>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Last Login:</span>
-                        <span className="text-sm text-muted-foreground">
-                          {profile?.last_login_at 
-                            ? new Date(profile.last_login_at).toLocaleDateString()
-                            : 'Never'
-                          }
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Session Count:</span>
-                        <span className="text-sm text-muted-foreground">
-                          {profile?.session_count || 0}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Failed Attempts:</span>
-                        <span className="text-sm text-muted-foreground">
-                          {profile?.failed_login_attempts || 0}
-                        </span>
-                      </div>
-                    </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">MFA:</span>
+                    <Badge variant={profile?.mfa_enabled ? 'default' : 'secondary'}>
+                      {profile?.mfa_enabled ? 'Enabled' : 'Disabled'}
+                    </Badge>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-
-          {/* Template Selection for Clients */}
-          {profile?.role === 'client' && (
-            <div className="space-y-4 sm:space-y-6">
-              <TemplateSelector />
+              </div>
+              
+              {/* Security Info - Simplified */}
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm">Security</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Last Login:</span>
+                    <span className="text-xs text-muted-foreground">
+                      {profile?.last_login_at 
+                        ? new Date(profile.last_login_at).toLocaleDateString()
+                        : 'Never'
+                      }
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Sessions:</span>
+                    <span className="text-xs text-muted-foreground">
+                      {profile?.session_count || 0}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
+          </CardContent>
+        </Card>
 
-            {/* Role-based Dashboard */}
-            {renderDashboard()}
+        {/* Template Selection for Clients - Optimized */}
+        {profile?.role === 'client' && (
+          <div className="animate-fade-in">
+            <TemplateSelector />
+          </div>
+        )}
+
+        {/* Role-based Dashboard - Optimized */}
+        <div className="animate-fade-in">
+          {renderDashboard()}
         </div>
       </main>
     </div>
