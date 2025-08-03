@@ -18,6 +18,7 @@ import ClientDashboard from "./pages/ClientDashboard";
 import ReviewerDashboard from "./pages/ReviewerDashboard";
 import ReviewerDocumentView from "./pages/ReviewerDocumentView";
 import AdminAuditLogs from "./pages/AdminAuditLogs";
+import AdminBootstrap from "./pages/AdminBootstrap";
 import UserSettings from "./pages/UserSettings";
 import NotFound from "./pages/NotFound";
 import Unauthorized from "./pages/Unauthorized";
@@ -134,6 +135,7 @@ const AppRoot = () => (
                 </ProtectedRoute>
               } 
             />
+            <Route path="/admin/bootstrap" element={<AdminBootstrap />} />
             <Route 
               path="/app/settings" 
               element={
