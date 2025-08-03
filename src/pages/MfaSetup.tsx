@@ -70,10 +70,10 @@ export default function MfaSetup() {
       try {
         console.log('Verifying MFA enrollment with factorId:', factorId, 'code length:', verificationCode.length);
         
-        // Verify the enrollment with Supabase - use challengeId as factorId for enrollment
+        // Verify the enrollment with Supabase - use empty challengeId for enrollment
         const { data, error } = await supabase.auth.mfa.verify({
           factorId,
-          challengeId: factorId,
+          challengeId: '',
           code: verificationCode
         });
 
