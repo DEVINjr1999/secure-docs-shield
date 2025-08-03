@@ -30,14 +30,17 @@ export default function TemplateSelector() {
 
   const loadTemplates = async () => {
     try {
+      console.log('Loading templates...');
       const { data, error } = await supabase
         .from('document_templates')
         .select('*')
         .eq('is_active', true)
         .order('name');
 
+      console.log('Templates query result:', { data, error });
       if (error) throw error;
       setTemplates(data || []);
+      console.log('Templates set:', data?.length || 0);
     } catch (error: any) {
       console.error('Error loading templates:', error);
       toast({
