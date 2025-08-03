@@ -17,7 +17,10 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Upload, FileText, Shield, ArrowLeft } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
+import { TemplateFieldGroup } from '@/components/TemplateFieldGroup';
+import { Loader2, Upload, FileText, Shield, ArrowLeft, Clock, CheckCircle } from 'lucide-react';
 
 const uploadSchema = z.object({
   upload_type: z.enum(['file', 'template']),
@@ -46,6 +49,8 @@ export default function DocumentUpload() {
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [templateFormData, setTemplateFormData] = useState<Record<string, any>>({});
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['personal', 'company']));
+  const [autosaveEnabled] = useState(true);
 
   // Get URL parameters
   const urlParams = new URLSearchParams(window.location.search);
@@ -64,6 +69,29 @@ export default function DocumentUpload() {
 
   const uploadType = form.watch('upload_type');
   const templateId = form.watch('template_id');
+
+  // Helper functions for enhanced template system
+  const toggleGroup = (groupName: string) => {
+    const newExpandedGroups = new Set(expandedGroups);
+    if (newExpandedGroups.has(groupName)) {
+      newExpandedGroups.delete(groupName);
+    } else {
+      newExpandedGroups.add(groupName);
+    }
+    setExpandedGroups(newExpandedGroups);
+  };
+
+  // Calculate overall completion progress
+  const calculateProgress = () => {
+    if (!selectedTemplate?.template_schema?.fields) return 0;
+    const fields = selectedTemplate.template_schema.fields;
+    const requiredFields = fields.filter((field: any) => field.required);
+    const completedRequired = requiredFields.filter((field: any) => {
+      const value = templateFormData[field.name];
+      return value && value.toString().trim() !== '';
+    });
+    return requiredFields.length > 0 ? (completedRequired.length / requiredFields.length) * 100 : 100;
+  };
 
   useEffect(() => {
     loadTemplates();
@@ -139,72 +167,111 @@ export default function DocumentUpload() {
 
   const renderTemplateFields = () => {
     if (!selectedTemplate?.template_schema) return null;
-
-    const schema = selectedTemplate.template_schema;
     
+    const schema = selectedTemplate.template_schema as { fields: any[] };
+    const progress = calculateProgress();
+    
+    // Group fields by category
+    const fieldGroups = schema.fields.reduce((groups: Record<string, any[]>, field) => {
+      const group = field.group || 'general';
+      if (!groups[group]) {
+        groups[group] = [];
+      }
+      groups[group].push(field);
+      return groups;
+    }, {});
+
+    // Define group metadata
+    const groupMetadata: Record<string, { title: string; description: string }> = {
+      personal: { title: "Personal Information", description: "Your personal details and contact information" },
+      company: { title: "Company Information", description: "Business details and corporate information" },
+      document: { title: "Document Details", description: "Specific information about this document" },
+      financial: { title: "Financial Information", description: "Monetary amounts and financial terms" },
+      dates: { title: "Important Dates", description: "Timeline and date-related information" },
+      general: { title: "General Information", description: "Additional required information" }
+    };
+
+    // Create a dummy form for the field renderer
+    const templateForm = {
+      ...form,
+      register: (name: string) => ({
+        onChange: (e: any) => {
+          const value = e.target?.value ?? e;
+          setTemplateFormData(prev => ({ ...prev, [name]: value }));
+        },
+        value: templateFormData[name] || '',
+        name
+      }),
+      setValue: (name: string, value: any) => {
+        setTemplateFormData(prev => ({ ...prev, [name]: value }));
+      },
+      watch: (name?: string) => {
+        if (name) return templateFormData[name];
+        return templateFormData;
+      }
+    };
+
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Template Fields</CardTitle>
-          <CardDescription>
-            Fill in the required information for {selectedTemplate.name}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {schema.fields?.map((field: any, index: number) => (
-            <div key={index}>
-              <Label htmlFor={field.name}>{field.label}</Label>
-              {field.type === 'text' && (
-                <Input
-                  id={field.name}
-                  placeholder={field.placeholder}
-                  required={field.required}
-                  value={templateFormData[field.name] || ''}
-                  onChange={(e) => setTemplateFormData(prev => ({
-                    ...prev,
-                    [field.name]: e.target.value
-                  }))}
-                />
-              )}
-              {field.type === 'textarea' && (
-                <Textarea
-                  id={field.name}
-                  placeholder={field.placeholder}
-                  required={field.required}
-                  value={templateFormData[field.name] || ''}
-                  onChange={(e) => setTemplateFormData(prev => ({
-                    ...prev,
-                    [field.name]: e.target.value
-                  }))}
-                />
-              )}
-              {field.type === 'select' && (
-                <Select
-                  value={templateFormData[field.name] || ''}
-                  onValueChange={(value) => setTemplateFormData(prev => ({
-                    ...prev,
-                    [field.name]: value
-                  }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={field.placeholder} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {field.options?.map((option: any) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              {field.description && (
-                <p className="text-sm text-muted-foreground">{field.description}</p>
-              )}
+      <div className="space-y-6">
+        {/* Progress Header */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  {selectedTemplate.name}
+                </CardTitle>
+                <CardDescription>
+                  Fill in the required information for this template
+                </CardDescription>
+              </div>
+              <div className="text-right space-y-1">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <Badge variant={progress === 100 ? "default" : "secondary"}>
+                    {Math.round(progress)}% Complete
+                  </Badge>
+                </div>
+                <Progress value={progress} className="w-32 h-2" />
+              </div>
             </div>
-          ))}
-        </CardContent>
-      </Card>
+          </CardHeader>
+        </Card>
+
+        {/* Grouped Fields */}
+        {Object.entries(fieldGroups).map(([groupName, fields]) => {
+          const metadata = groupMetadata[groupName] || { 
+            title: groupName.charAt(0).toUpperCase() + groupName.slice(1), 
+            description: `${groupName} information` 
+          };
+          const group = {
+            name: groupName,
+            title: metadata.title,
+            description: metadata.description,
+            icon: null,
+            fields: fields as any[]
+          };
+          
+          return (
+            <TemplateFieldGroup
+              key={groupName}
+              group={group}
+              form={templateForm as any}
+              isExpanded={expandedGroups.has(groupName)}
+              onToggle={() => toggleGroup(groupName)}
+            />
+          );
+        })}
+
+        {/* Auto-save indicator */}
+        {autosaveEnabled && (
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            Changes are automatically saved
+          </div>
+        )}
+      </div>
     );
   };
 
