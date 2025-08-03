@@ -11,11 +11,22 @@ const Index = () => {
   const { user, profile, signOut } = useAuth();
   
   const handleSignOut = async () => {
-    await signOut();
-    toast({
-      title: "Signed Out",
-      description: "You have been successfully signed out.",
-    });
+    try {
+      console.log('Logout button clicked');
+      await signOut();
+      console.log('SignOut completed');
+      toast({
+        title: "Signed Out",
+        description: "You have been successfully signed out.",
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const features = [
