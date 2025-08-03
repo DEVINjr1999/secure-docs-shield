@@ -46,16 +46,10 @@ export default function DocumentUpload() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [templateFormData, setTemplateFormData] = useState<Record<string, any>>({});
 
-  // Get URL parameters
-  const urlParams = new URLSearchParams(window.location.search);
-  const preselectedTemplate = urlParams.get('template');
-  const preselectedType = urlParams.get('type');
-
   const form = useForm<UploadFormData>({
     resolver: zodResolver(uploadSchema),
     defaultValues: {
-      upload_type: preselectedType === 'template' ? 'template' : 'file',
-      template_id: preselectedTemplate || undefined,
+      upload_type: 'file',
       document_type: 'other',
       jurisdiction: 'federal_australia',
     },

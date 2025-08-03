@@ -4,11 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Shield, Lock, FileText, Users, Activity, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import TemplateSelector from '@/components/TemplateSelector';
 
 const Index = () => {
   const { user, profile } = useAuth();
-  
 
   const features = [
     {
@@ -41,23 +39,23 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <section className="relative py-12 sm:py-16 lg:py-20 px-4">
+      <section className="relative py-20 px-4">
         <div className="container mx-auto text-center">
-          <div className="flex items-center justify-center mb-4 sm:mb-6">
-            <Shield className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-primary mr-2 sm:mr-3" />
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold">SecureLegal</h1>
+          <div className="flex items-center justify-center mb-6">
+            <Shield className="h-12 w-12 text-primary mr-3" />
+            <h1 className="text-4xl md:text-6xl font-bold">SecureLegal</h1>
           </div>
           
-          <h2 className="text-lg sm:text-xl lg:text-2xl text-muted-foreground mb-6 sm:mb-8 max-w-3xl mx-auto">
+          <h2 className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto">
             Cybersecurity-Focused Legal Document Platform with Enterprise-Grade Authentication
           </h2>
           
-          <p className="text-base sm:text-lg text-muted-foreground mb-8 sm:mb-12 max-w-2xl mx-auto px-4">
+          <p className="text-lg text-muted-foreground mb-12 max-w-2xl mx-auto">
             Built for legal professionals who need the highest levels of security, compliance, 
             and audit capabilities for sensitive document management.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
             {user ? (
               <Link to="/app">
                 <Button size="lg" className="w-full sm:w-auto">
@@ -93,19 +91,6 @@ const Index = () => {
               </Badge>
             </div>
           )}
-        </div>
-      </section>
-
-      {/* Template Selection - Available to All Visitors */}
-      <section className="py-12 px-4 bg-muted/30">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center space-y-4 mb-8">
-            <h2 className="text-2xl md:text-3xl font-bold">Available Document Templates</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Choose from our professionally crafted legal document templates. Sign up to get started with secure document management.
-            </p>
-          </div>
-          <TemplateSelector />
         </div>
       </section>
 

@@ -1,5 +1,5 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,56 +21,12 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    // Verify authentication
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.error('Missing or invalid authorization header');
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized: Missing or invalid authorization header' }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    // Initialize Supabase client with user auth
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Verify user authentication
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-    if (authError || !user) {
-      console.error('Authentication failed:', authError);
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized: Invalid token' }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
     const { documentId, originalDocumentId, version, title, userEmail }: NotificationRequest = await req.json();
-    
-    // Validate request payload
-    if (!documentId || !originalDocumentId || !title) {
-      console.error('Missing required fields in request');
-      return new Response(
-        JSON.stringify({ error: 'Bad Request: Missing required fields' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
 
     console.log(`Processing revision notification for document ${documentId}, version ${version}`);
 
@@ -83,35 +39,23 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (docError) {
       console.error('Error fetching original document:', docError);
-      return new Response(
-        JSON.stringify({ error: 'Document not found' }),
-        { 
-          status: 404, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      throw docError;
     }
 
-    // Verify user has permission to send notifications for this document
-    const { data: profile } = await supabaseClient
-      .from('profiles')
-      .select('role')
-      .eq('user_id', user.id)
-      .single();
+    // Get reviewer profile
+    let reviewerEmail = null;
+    if (originalDoc.assigned_reviewer_id) {
+      const { data: reviewerProfile } = await supabaseClient
+        .from('profiles')
+        .select('user_id')
+        .eq('user_id', originalDoc.assigned_reviewer_id)
+        .single();
 
-    const isAdmin = profile?.role === 'admin';
-    const isDocumentOwner = originalDoc.user_id === user.id;
-    const isAssignedReviewer = originalDoc.assigned_reviewer_id === user.id;
-
-    if (!isAdmin && !isDocumentOwner && !isAssignedReviewer) {
-      console.error('User lacks permission for this document');
-      return new Response(
-        JSON.stringify({ error: 'Forbidden: Insufficient permissions' }),
-        { 
-          status: 403, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      if (reviewerProfile) {
+        // Get reviewer's email from auth.users (this would need admin access)
+        // For now, we'll just log the notification
+        console.log(`Would notify reviewer ${originalDoc.assigned_reviewer_id} about revision`);
+      }
     }
 
     // Get all admin users for notification
@@ -119,8 +63,7 @@ const handler = async (req: Request): Promise<Response> => {
       .from('profiles')
       .select('user_id')
       .eq('role', 'admin')
-      .eq('account_status', 'active')
-      .is('deleted_at', null);
+      .eq('account_status', 'active');
 
     if (adminError) {
       console.error('Error fetching admins:', adminError);
@@ -133,16 +76,15 @@ const handler = async (req: Request): Promise<Response> => {
     if (originalDoc.assigned_reviewer_id) {
       notifications.push({
         user_id: originalDoc.assigned_reviewer_id,
-        event: 'document_revision_submitted',
+        event: 'document_revision_notification',
         action_type: 'notification',
         document_id: documentId,
         metadata: {
-          document_id: documentId,
+          notification_type: 'revision_submitted',
+          version,
           original_document_id: originalDocumentId,
-          document_title: title,
-          version: version,
-          submitted_by: userEmail,
-          message: `New revision (v${version}) of "${title}" has been submitted for review.`
+          title,
+          user_email: userEmail
         }
       });
     }
@@ -152,16 +94,15 @@ const handler = async (req: Request): Promise<Response> => {
       for (const admin of admins) {
         notifications.push({
           user_id: admin.user_id,
-          event: 'document_revision_submitted',
+          event: 'document_revision_notification',
           action_type: 'notification',
           document_id: documentId,
           metadata: {
-            document_id: documentId,
+            notification_type: 'revision_submitted',
+            version,
             original_document_id: originalDocumentId,
-            document_title: title,
-            version: version,
-            submitted_by: userEmail,
-            message: `New document revision (v${version}) of "${title}" requires review.`
+            title,
+            user_email: userEmail
           }
         });
       }
@@ -175,36 +116,34 @@ const handler = async (req: Request): Promise<Response> => {
 
       if (insertError) {
         console.error('Error inserting notifications:', insertError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to send notifications' }),
-          { 
-            status: 500, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
+        throw insertError;
       }
     }
 
-    console.log(`Successfully sent ${notifications.length} notifications for document ${documentId}`);
+    // TODO: In a real implementation, you would integrate with an email service
+    // like Resend to send actual email notifications to reviewers and admins
+    
+    console.log(`Successfully processed ${notifications.length} notifications for document revision`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Notifications sent successfully',
-        notificationCount: notifications.length
+        notificationsSent: notifications.length,
+        message: 'Revision notifications processed successfully'
       }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
       }
     );
 
   } catch (error: any) {
-    console.error('Unexpected error in send-revision-notification:', error);
+    console.error('Error in send-revision-notification function:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal Server Error' }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      JSON.stringify({ error: error.message }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
       }
     );
   }

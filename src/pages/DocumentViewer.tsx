@@ -11,8 +11,6 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { DocumentDecryption } from '@/components/DocumentDecryption';
-import DocumentActivityFeed from '@/components/DocumentActivityFeed';
-import DocumentTipsPanel from '@/components/DocumentTipsPanel';
 import { 
   FileText, 
   ArrowLeft, 
@@ -337,7 +335,7 @@ export default function DocumentViewer() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-4 sm:py-8 max-w-7xl">
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-6">
         <Button
           variant="ghost"
@@ -348,13 +346,13 @@ export default function DocumentViewer() {
           Back to Documents
         </Button>
         
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold truncate">{document.title}</h1>
-            <p className="text-muted-foreground text-sm sm:text-base">{document.description}</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">{document.title}</h1>
+            <p className="text-muted-foreground">{document.description}</p>
           </div>
           
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-4">
             <Badge variant={getStatusVariant(document.status)}>
               {document.status.replace('_', ' ').toUpperCase()}
             </Badge>
@@ -363,7 +361,6 @@ export default function DocumentViewer() {
               <Button
                 onClick={() => navigate(`/app/documents/${docId}/edit`)}
                 variant="outline"
-                size="sm"
               >
                 <Edit className="h-4 w-4 mr-2" />
                 Edit
@@ -374,7 +371,6 @@ export default function DocumentViewer() {
               <Button
                 onClick={() => navigate(`/app/documents/${docId}/edit`)}
                 variant="default"
-                size="sm"
               >
                 <Edit className="h-4 w-4 mr-2" />
                 Submit New Version
@@ -384,8 +380,8 @@ export default function DocumentViewer() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
-        <div className="lg:col-span-2 xl:col-span-3 space-y-4 sm:space-y-6">
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-6">
           {/* Document Content */}
           <Card>
             <CardHeader>
@@ -526,7 +522,7 @@ export default function DocumentViewer() {
           </Card>
         </div>
 
-        <div className="hidden lg:block space-y-4 sm:space-y-6">
+        <div className="space-y-6">
           {/* Document Details */}
           <Card>
             <CardHeader>
@@ -740,12 +736,6 @@ export default function DocumentViewer() {
             </CardContent>
           </Card>
         </div>
-      </div>
-      
-      {/* Mobile-only bottom panels */}
-      <div className="lg:hidden mt-6 space-y-4">
-        <DocumentActivityFeed documentId={docId!} />
-        <DocumentTipsPanel documentType={document.document_type} />
       </div>
     </div>
   );

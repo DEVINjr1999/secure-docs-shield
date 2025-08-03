@@ -12,7 +12,7 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string, rememberMe?: boolean) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, fullName: string, captchaToken?: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: any }>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: any }>;
@@ -117,65 +117,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch user profile using secure function with fallback
+  // Fetch user profile
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
     try {
-      console.log('fetchProfile: Attempting to fetch profile for userId:', userId);
-      
-      // Try RPC call with timeout
-      const rpcPromise = supabase.rpc('get_user_profile', { p_user_id: userId });
-      const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('RPC timeout')), 3000)
-      );
-      
-      const result = await Promise.race([rpcPromise, timeoutPromise]);
-      const { data, error } = result as any;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
 
-      if (error) throw error;
-
-      const profile = data && data.length > 0 ? data[0] : null;
-      if (profile) {
-        console.log('fetchProfile: Profile data received via RPC:', profile);
-        return profile;
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return null;
       }
-    } catch (error) {
-      console.warn('RPC failed, using fallback profile:', error);
-    }
 
-    // Fallback: Create basic profile from user data
-    const fallbackProfile: Profile = {
-      id: crypto.randomUUID(),
-      user_id: userId,
-      full_name: user?.email || 'User',
-      role: 'client',
-      account_status: 'active',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      deleted_at: null,
-      session_count: 0,
-      last_activity_at: null,
-      last_login_at: new Date().toISOString(),
-      gdpr_consent_at: null,
-      privacy_consent_at: null,
-      mfa_enabled: false,
-      locale: 'en',
-      username: null,
-      avatar_url: null,
-      phone: null,
-      recovery_email: null,
-      terms_accepted_at: null,
-      mfa_method: null,
-      email_verified_at: null,
-      is_compromised: false,
-      account_locked_until: null,
-      last_failed_login_at: null,
-      timezone: 'UTC',
-      failed_login_attempts: 0,
-      mfa_verified_at: null
-    };
-    
-    console.log('fetchProfile: Using fallback profile');
-    return fallbackProfile;
+      return data;
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      return null;
+    }
   };
 
   // Check account security status
@@ -199,16 +159,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Initialize auth state
   useEffect(() => {
-    console.log('Auth initialization starting...');
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state change:', event, 'session exists:', !!session);
         setSession(session);
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          console.log('User found, fetching profile for:', session.user.id);
           // Check account security
           const isSecure = await checkAccountSecurity(session.user.id);
           if (!isSecure) {
@@ -221,9 +178,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           }
 
-          // Fetch profile using secure function
+          // Fetch profile
           const userProfile = await fetchProfile(session.user.id);
-          console.log('Profile fetched:', userProfile);
           setProfile(userProfile);
 
           // Log successful authentication
@@ -239,7 +195,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
           }
         } else {
-          console.log('No user, clearing profile');
           setProfile(null);
         }
 
@@ -248,22 +203,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     // Check for existing session
-    console.log('Checking for existing session...');
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      console.log('Existing session check:', !!session, 'error:', error);
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        console.log('Existing session found, fetching profile...');
-        fetchProfile(session.user.id).then((profile) => {
-          console.log('Profile from existing session:', profile);
-          setProfile(profile);
-          setLoading(false);
-        });
-      } else {
-        setLoading(false);
+        fetchProfile(session.user.id).then(setProfile);
       }
+      
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -365,7 +313,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string, captchaToken?: string) => {
+  const signUp = async (email: string, password: string, fullName: string) => {
     try {
       // Validate password strength
       const passwordValidation = validatePasswordStrength(password);
@@ -387,7 +335,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           data: {
             full_name: fullName,
           },
-          captchaToken,
         },
       });
 
