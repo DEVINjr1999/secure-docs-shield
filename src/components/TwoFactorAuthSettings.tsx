@@ -129,15 +129,30 @@ export default function TwoFactorAuthSettings({ profile }: TwoFactorAuthSettings
       return;
     }
 
-    const isValid = authenticator.verify({
-      token: verificationCode,
-      secret: totpSecret
-    });
+    console.log('Verifying code:', verificationCode);
+    console.log('Secret:', totpSecret);
 
-    if (!isValid) {
+    try {
+      const isValid = authenticator.verify({
+        token: verificationCode,
+        secret: totpSecret
+      });
+
+      console.log('Verification result:', isValid);
+
+      if (!isValid) {
+        toast({
+          title: "Error",
+          description: "Invalid verification code. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+    } catch (error) {
+      console.error('Verification error:', error);
       toast({
         title: "Error",
-        description: "Invalid verification code. Please try again.",
+        description: "Error verifying code. Please try again.",
         variant: "destructive"
       });
       return;
