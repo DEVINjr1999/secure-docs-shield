@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Shield, Lock, FileText, Users, Activity, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import TemplateSelector from '@/components/TemplateSelector';
 
 const Index = () => {
   const { user, profile } = useAuth();
@@ -93,6 +94,15 @@ const Index = () => {
           )}
         </div>
       </section>
+
+      {/* Template Selection for Authenticated Users */}
+      {user && profile?.role === 'client' && (
+        <section className="py-12 px-4 bg-muted/30">
+          <div className="container mx-auto max-w-6xl">
+            <TemplateSelector />
+          </div>
+        </section>
+      )}
 
       {/* Features Section */}
       <section className="py-20 px-4 bg-muted/50">
