@@ -19,6 +19,9 @@ import ReviewerDocumentView from "./pages/ReviewerDocumentView";
 import AdminAuditLogs from "./pages/AdminAuditLogs";
 import UserSettings from "./pages/UserSettings";
 import NotFound from "./pages/NotFound";
+import Unauthorized from "./pages/Unauthorized";
+import Suspended from "./pages/Suspended";
+import MfaSetup from "./pages/MfaSetup";
 
 const queryClient = new QueryClient();
 
@@ -136,6 +139,9 @@ const AppRoot = () => (
                 </ProtectedRoute>
               } 
             />
+            <Route path="/unauthorized" element={<Unauthorized />} />
+            <Route path="/auth/suspended" element={<Suspended />} />
+            <Route path="/mfa/setup" element={<MfaSetup />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
