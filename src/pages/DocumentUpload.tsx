@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import AppLayout from '@/components/AppLayout';
 import { encryptData, encryptFile, generateDocumentKey, hashKey } from '@/lib/encryption';
+import { EncryptionKeyDisplay } from '@/components/EncryptionKeyDisplay';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,6 +52,9 @@ export default function DocumentUpload() {
   const [templateFormData, setTemplateFormData] = useState<Record<string, any>>({});
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['personal', 'company']));
   const [autosaveEnabled] = useState(true);
+  const [showEncryptionKey, setShowEncryptionKey] = useState(false);
+  const [generatedKey, setGeneratedKey] = useState('');
+  const [uploadedDocumentTitle, setUploadedDocumentTitle] = useState('');
 
   // Get URL parameters
   const urlParams = new URLSearchParams(window.location.search);
@@ -361,12 +365,10 @@ export default function DocumentUpload() {
         p_document_id: insertedDoc.id
       });
 
-      toast({
-        title: 'Success!',
-        description: 'Document uploaded and submitted for review successfully',
-      });
-
-      navigate('/app/documents');
+      // Show encryption key to user instead of navigating immediately
+      setGeneratedKey(encryptionKey);
+      setUploadedDocumentTitle(data.title);
+      setShowEncryptionKey(true);
     } catch (error: any) {
       console.error('Upload error:', error);
       toast({
@@ -379,8 +381,25 @@ export default function DocumentUpload() {
     }
   };
 
+  const handleContinueAfterKeyDisplay = () => {
+    setShowEncryptionKey(false);
+    toast({
+      title: 'Success!',
+      description: 'Document uploaded and submitted for review successfully',
+    });
+    navigate('/app/documents');
+  };
+
   return (
     <AppLayout title="Upload Document" showBackButton>
+      {/* Encryption Key Display Modal */}
+      {showEncryptionKey && (
+        <EncryptionKeyDisplay
+          encryptionKey={generatedKey}
+          documentTitle={uploadedDocumentTitle}
+          onContinue={handleContinueAfterKeyDisplay}
+        />
+      )}
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="mb-6">
         

@@ -54,7 +54,7 @@ export function DocumentDecryption({ encryptedContent, onDecrypted }: DocumentDe
           Document Encrypted
         </CardTitle>
         <CardDescription>
-          Enter the decryption key to view the document content
+          Enter the decryption key that was provided when you uploaded this document
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
