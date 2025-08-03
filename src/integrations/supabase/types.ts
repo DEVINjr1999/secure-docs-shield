@@ -147,7 +147,7 @@ export type Database = {
       document_templates: {
         Row: {
           created_at: string
-          created_by: string
+          created_by: string | null
           default_content: string | null
           description: string | null
           document_type: Database["public"]["Enums"]["document_type"]
@@ -160,7 +160,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          created_by: string
+          created_by?: string | null
           default_content?: string | null
           description?: string | null
           document_type: Database["public"]["Enums"]["document_type"]
@@ -173,7 +173,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           default_content?: string | null
           description?: string | null
           document_type?: Database["public"]["Enums"]["document_type"]
