@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { DocumentDecryption } from '@/components/DocumentDecryption';
+import { DocumentTemplateRenderer } from '@/components/DocumentTemplateRenderer';
 import DocumentActivityFeed from '@/components/DocumentActivityFeed';
 import DocumentTipsPanel from '@/components/DocumentTipsPanel';
 import { 
@@ -234,6 +235,18 @@ export default function DocumentViewer() {
     setDecryptedContent(content);
   };
 
+  const isTemplateDocument = () => {
+    try {
+      if (decryptedContent) {
+        const parsed = JSON.parse(decryptedContent);
+        return parsed.templateId || parsed.formData;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
   const getStatusVariant = (status: string) => {
     switch (status) {
       case 'draft': return 'secondary';
@@ -399,7 +412,9 @@ export default function DocumentViewer() {
               ) : decryptedContent ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-medium">Decrypted Form Data</h3>
+                    <h3 className="font-medium">
+                      {isTemplateDocument() ? 'Document Content' : 'Decrypted Form Data'}
+                    </h3>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -409,9 +424,19 @@ export default function DocumentViewer() {
                       Hide Content
                     </Button>
                   </div>
-                  <div className="bg-muted p-4 rounded-lg">
-                    <pre className="whitespace-pre-wrap text-sm">{decryptedContent}</pre>
-                  </div>
+                  {isTemplateDocument() ? (
+                    <DocumentTemplateRenderer
+                      templateData={decryptedContent}
+                      documentTitle={document.title}
+                      documentId={document.id}
+                      createdAt={document.created_at}
+                      status={document.status}
+                    />
+                  ) : (
+                    <div className="bg-muted p-4 rounded-lg">
+                      <pre className="whitespace-pre-wrap text-sm">{decryptedContent}</pre>
+                    </div>
+                  )}
                 </div>
               ) : document.file_name ? (
                 <div className="space-y-4">
