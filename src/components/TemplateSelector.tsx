@@ -30,24 +30,14 @@ export default function TemplateSelector() {
 
   const loadTemplates = async () => {
     try {
-      console.log('Loading templates...');
-      console.log('Current user:', { user: !!supabase.auth.getUser(), session: !!supabase.auth.getSession() });
-      
       const { data, error } = await supabase
         .from('document_templates')
         .select('*')
         .eq('is_active', true)
         .order('name');
 
-      console.log('Templates query result:', { data, error, count: data?.length });
-      
-      if (error) {
-        console.error('Query error details:', error);
-        throw error;
-      }
-      
+      if (error) throw error;
       setTemplates(data || []);
-      console.log('Templates set successfully:', data?.length || 0);
     } catch (error: any) {
       console.error('Error loading templates:', error);
       toast({
