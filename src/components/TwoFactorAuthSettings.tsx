@@ -12,6 +12,36 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Smartphone, Key, Copy, RefreshCw } from "lucide-react";
 import { authenticator } from "otplib";
 import QRCode from "qrcode";
+import CryptoJS from 'crypto-js';
+
+// Configure otplib for browser compatibility
+authenticator.options = {
+  crypto: {
+    createHmac: (algorithm: string, key: string | Buffer) => {
+      // Convert the key to a WordArray that crypto-js can use
+      const keyWordArray = typeof key === 'string' 
+        ? CryptoJS.enc.Base32.parse(key)
+        : CryptoJS.lib.WordArray.create(key);
+      
+      return {
+        update: (data: string) => {
+          const hmac = CryptoJS.HmacSHA1(data, keyWordArray);
+          return {
+            digest: () => {
+              // Convert CryptoJS output to Buffer-like format for otplib
+              const hex = hmac.toString(CryptoJS.enc.Hex);
+              const bytes = new Uint8Array(hex.length / 2);
+              for (let i = 0; i < hex.length; i += 2) {
+                bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+              }
+              return bytes;
+            }
+          };
+        }
+      };
+    }
+  }
+};
 
 // Browser-compatible TOTP implementation
 const generateSecureSecret = () => {
