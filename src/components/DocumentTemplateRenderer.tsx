@@ -67,30 +67,24 @@ export function DocumentTemplateRenderer({
   }, []);
 
   const loadTemplate = async () => {
-    if (!parsedData.templateId) {
-      setLoading(false);
-      return;
-    }
+    // Check if we have templateId in the data
+    if (parsedData.templateId) {
+      try {
+        const { data, error } = await supabase
+          .from('document_templates')
+          .select('*')
+          .eq('id', parsedData.templateId)
+          .single();
 
-    try {
-      const { data, error } = await supabase
-        .from('document_templates')
-        .select('*')
-        .eq('id', parsedData.templateId)
-        .single();
-
-      if (error) throw error;
-      setTemplate(data);
-    } catch (error) {
-      console.error('Error loading template:', error);
-      toast({
-        title: 'Warning',
-        description: 'Could not load template schema. Displaying basic form data.',
-        variant: 'default',
-      });
-    } finally {
-      setLoading(false);
+        if (!error && data) {
+          setTemplate(data);
+        }
+      } catch (error) {
+        console.error('Error loading template:', error);
+      }
     }
+    // Always set loading to false, even without template
+    setLoading(false);
   };
 
   const getFieldIcon = (type: string, name: string) => {
@@ -249,15 +243,31 @@ export function DocumentTemplateRenderer({
             <CardContent>
               <div className="space-y-4">
                 {Object.entries(parsedData.formData || parsedData).map(([key, value]: [string, any]) => {
-                  if (key === 'templateId') return null;
+                  if (key === 'templateId' || !value || value === '') return null;
+                  
+                  // Smart field type detection for formatting
+                  const fieldType = key.toLowerCase().includes('date') ? 'date' :
+                                  key.toLowerCase().includes('amount') || key.toLowerCase().includes('price') ? 'currency' :
+                                  'text';
+                  
+                  const mockField: TemplateField = {
+                    name: key,
+                    label: key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' '),
+                    type: fieldType
+                  };
                   
                   return (
-                    <div key={key} className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                      <div className="font-medium text-muted-foreground capitalize">
-                        {key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ')}:
+                    <div key={key} className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        {getFieldIcon(fieldType, key)}
+                        <label className="text-sm font-medium text-muted-foreground capitalize">
+                          {mockField.label}
+                        </label>
                       </div>
-                      <div className="md:col-span-2 font-medium">
-                        {typeof value === 'object' ? JSON.stringify(value) : String(value || 'Not provided')}
+                      <div className="pl-6">
+                        <p className="text-base font-medium">
+                          {formatFieldValue(mockField, value)}
+                        </p>
                       </div>
                     </div>
                   );

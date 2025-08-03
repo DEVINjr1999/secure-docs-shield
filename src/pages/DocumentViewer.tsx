@@ -239,7 +239,17 @@ export default function DocumentViewer() {
     try {
       if (decryptedContent) {
         const parsed = JSON.parse(decryptedContent);
-        return parsed.templateId || parsed.formData;
+        // Check for template structure or common form field patterns
+        return parsed.templateId || 
+               parsed.formData || 
+               (typeof parsed === 'object' && parsed !== null && 
+                Object.keys(parsed).some(key => 
+                  key.includes('name') || 
+                  key.includes('email') || 
+                  key.includes('company') || 
+                  key.includes('amount') ||
+                  key.includes('date')
+                ));
       }
       return false;
     } catch {
