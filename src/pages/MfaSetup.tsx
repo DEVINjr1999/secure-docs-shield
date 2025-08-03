@@ -68,16 +68,21 @@ export default function MfaSetup() {
 
       setIsLoading(true);
       try {
-        // Verify the enrollment with Supabase
+        console.log('Verifying MFA enrollment with factorId:', factorId, 'code length:', verificationCode.length);
+        
+        // Verify the enrollment with Supabase - use challengeId as factorId for enrollment
         const { data, error } = await supabase.auth.mfa.verify({
           factorId,
-          code: verificationCode,
-          challengeId: '', // For enrollment, challengeId is not needed
+          challengeId: factorId,
+          code: verificationCode
         });
 
         if (error) {
+          console.error('MFA verification error:', error);
           throw error;
         }
+
+        console.log('MFA verification successful:', data);
 
         // Update profile to track MFA status
         await updateProfile({
