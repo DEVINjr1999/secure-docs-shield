@@ -51,19 +51,23 @@ export default function TwoFactorAuthSettings({ profile }: TwoFactorAuthSettings
     setBackupCodes(codes);
   };
 
-  const handleEnable2FA = async () => {
-    if (!showSetupDialog) {
+  const handleToggle2FA = async (checked: boolean) => {
+    if (checked) {
+      // Start the enable flow
       setShowSetupDialog(true);
       setSetupStep('generate');
       await generateTOTPSecret();
-      return;
+    } else {
+      // Start the disable flow
+      setShowDisableDialog(true);
     }
+  };
 
-    if (setupStep === 'generate') {
-      setSetupStep('verify');
-      return;
-    }
+  const handleContinueSetup = () => {
+    setSetupStep('verify');
+  };
 
+  const handleVerifyAndEnable = async () => {
     // Verify the code
     if (!verificationCode || verificationCode.length !== 6) {
       toast({
@@ -123,11 +127,6 @@ export default function TwoFactorAuthSettings({ profile }: TwoFactorAuthSettings
   };
 
   const handleDisable2FA = async () => {
-    if (!showDisableDialog) {
-      setShowDisableDialog(true);
-      return;
-    }
-
     if (!disableCode || disableCode.length !== 6) {
       toast({
         title: "Error",
@@ -204,13 +203,7 @@ export default function TwoFactorAuthSettings({ profile }: TwoFactorAuthSettings
           
           <Switch
             checked={profile.mfa_enabled}
-            onCheckedChange={(checked) => {
-              if (checked) {
-                handleEnable2FA();
-              } else {
-                handleDisable2FA();
-              }
-            }}
+            onCheckedChange={handleToggle2FA}
             disabled={isEnabling || isDisabling}
           />
         </div>
@@ -303,7 +296,7 @@ export default function TwoFactorAuthSettings({ profile }: TwoFactorAuthSettings
                 <Button variant="outline" onClick={() => setShowSetupDialog(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleEnable2FA}>
+                <Button onClick={handleContinueSetup}>
                   Continue
                 </Button>
               </>
@@ -312,7 +305,7 @@ export default function TwoFactorAuthSettings({ profile }: TwoFactorAuthSettings
                 <Button variant="outline" onClick={() => setSetupStep('generate')}>
                   Back
                 </Button>
-                <Button onClick={handleEnable2FA} disabled={isEnabling}>
+                <Button onClick={handleVerifyAndEnable} disabled={isEnabling}>
                   {isEnabling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Enable 2FA
                 </Button>
