@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { FileText, Upload, Eye, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import UserActivityFeed from '../UserActivityFeed';
 
 export function ClientDashboard() {
   const navigate = useNavigate();
@@ -53,11 +54,7 @@ export function ClientDashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            <div className="text-sm text-muted-foreground">
-              No recent activity
-            </div>
-          </div>
+          <UserActivityFeed limit={5} />
         </CardContent>
       </Card>
 
