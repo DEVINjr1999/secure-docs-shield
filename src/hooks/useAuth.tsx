@@ -117,31 +117,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch user profile using secure function
+  // Fetch user profile using secure function with fallback
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
     try {
       console.log('fetchProfile: Attempting to fetch profile for userId:', userId);
       
-      // Use the secure function instead of direct table query
-      const { data, error } = await supabase.rpc('get_user_profile', {
-        p_user_id: userId
-      });
+      // Try RPC call with timeout
+      const rpcPromise = supabase.rpc('get_user_profile', { p_user_id: userId });
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('RPC timeout')), 3000)
+      );
+      
+      const result = await Promise.race([rpcPromise, timeoutPromise]);
+      const { data, error } = result as any;
 
-      console.log('fetchProfile: RPC response - data:', data, 'error:', error);
+      if (error) throw error;
 
-      if (error) {
-        console.error('Error fetching profile via RPC:', error);
-        return null;
-      }
-
-      // The RPC returns an array, get the first item
       const profile = data && data.length > 0 ? data[0] : null;
-      console.log('fetchProfile: Profile data received:', profile);
-      return profile;
+      if (profile) {
+        console.log('fetchProfile: Profile data received via RPC:', profile);
+        return profile;
+      }
     } catch (error) {
-      console.error('Error fetching profile (caught):', error);
-      return null;
+      console.warn('RPC failed, using fallback profile:', error);
     }
+
+    // Fallback: Create basic profile from user data
+    const fallbackProfile: Profile = {
+      id: crypto.randomUUID(),
+      user_id: userId,
+      full_name: user?.email || 'User',
+      role: 'client',
+      account_status: 'active',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      deleted_at: null,
+      session_count: 0,
+      last_activity_at: null,
+      last_login_at: new Date().toISOString(),
+      gdpr_consent_at: null,
+      privacy_consent_at: null,
+      mfa_enabled: false,
+      locale: 'en',
+      username: null,
+      avatar_url: null,
+      phone: null,
+      recovery_email: null,
+      terms_accepted_at: null,
+      mfa_method: null,
+      email_verified_at: null,
+      is_compromised: false,
+      account_locked_until: null,
+      last_failed_login_at: null,
+      timezone: 'UTC',
+      failed_login_attempts: 0,
+      mfa_verified_at: null
+    };
+    
+    console.log('fetchProfile: Using fallback profile');
+    return fallbackProfile;
   };
 
   // Check account security status
