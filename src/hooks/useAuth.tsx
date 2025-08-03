@@ -121,11 +121,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
     try {
       console.log('fetchProfile: Attempting to fetch profile for userId:', userId);
-      const { data, error } = await supabase
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 5000);
+      });
+      
+      const queryPromise = supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
         .maybeSingle();
+
+      const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
 
       console.log('fetchProfile: Query response - data:', data, 'error:', error);
 
@@ -137,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('fetchProfile: Profile data received:', data);
       return data;
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error('Error fetching profile (caught):', error);
       return null;
     }
   };
