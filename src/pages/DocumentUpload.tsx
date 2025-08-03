@@ -40,12 +40,19 @@ const uploadSchema = z.object({
   encryption_mode: z.enum(['auto', 'custom']),
   custom_encryption_key: z.string().optional(),
 }).refine((data) => {
-  if (data.encryption_mode === 'custom') {
-    return data.custom_encryption_key && data.custom_encryption_key.length >= 32;
+  if (data.encryption_mode === 'custom' && data.custom_encryption_key) {
+    const key = data.custom_encryption_key;
+    const hasMinLength = key.length >= 10;
+    const hasUppercase = /[A-Z]/.test(key);
+    const hasLowercase = /[a-z]/.test(key);
+    const hasNumber = /\d/.test(key);
+    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(key);
+    
+    return hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
   }
   return true;
 }, {
-  message: "Custom encryption key must be at least 32 characters long",
+  message: "Encryption key must be at least 10 characters with uppercase, lowercase, number, and special character",
   path: ["custom_encryption_key"],
 });
 
@@ -638,7 +645,7 @@ export default function DocumentUpload() {
                               <div className="font-medium">Use my own encryption key</div>
                               <div className="text-sm text-muted-foreground mt-1">
                                 Provide your own encryption key. You'll be responsible for keeping it safe.
-                                Key must be at least 32 characters long.
+                                Must be at least 10 characters with uppercase, lowercase, number, and special character.
                               </div>
                             </div>
                           </Label>
@@ -660,12 +667,21 @@ export default function DocumentUpload() {
                       <FormControl>
                         <Input
                           type="password"
-                          placeholder="Enter your encryption key (minimum 32 characters)"
+                          placeholder="Enter your encryption key (min 10 chars, A-z, 0-9, special chars)"
                           {...field}
                         />
                       </FormControl>
                       <FormDescription>
-                        This key will be used to encrypt your document. Make sure to remember it as you'll need it to decrypt the document later.
+                        <div className="space-y-1 text-xs">
+                          <div>Requirements for your encryption key:</div>
+                          <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
+                            <li>At least 10 characters long</li>
+                            <li>Contains uppercase letters (A-Z)</li>
+                            <li>Contains lowercase letters (a-z)</li>
+                            <li>Contains numbers (0-9)</li>
+                            <li>Contains special characters (!@#$%^&*...)</li>
+                          </ul>
+                        </div>
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
