@@ -101,14 +101,18 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Template Selection for Authenticated Users */}
-      {user && profile?.role === 'client' && (
-        <section className="py-12 px-4 bg-muted/30">
-          <div className="container mx-auto max-w-6xl">
-            <TemplateSelector />
+      {/* Template Selection - Available to All Visitors */}
+      <section className="py-12 px-4 bg-muted/30">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center space-y-4 mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold">Available Document Templates</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Choose from our professionally crafted legal document templates. Sign up to get started with secure document management.
+            </p>
           </div>
-        </section>
-      )}
+          <TemplateSelector />
+        </div>
+      </section>
 
       {/* Features Section */}
       <section className="py-20 px-4 bg-muted/50">
