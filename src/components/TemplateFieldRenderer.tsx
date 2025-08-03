@@ -170,19 +170,25 @@ export const TemplateFieldRenderer: React.FC<TemplateFieldRendererProps> = ({ fi
         );
         
       case 'select':
-        const options = smartSuggestions.length > 0 ? smartSuggestions : (field.options || []);
+        // Prioritize field options from template over smart suggestions
+        const options = field.options && field.options.length > 0 
+          ? field.options 
+          : smartSuggestions;
         const filteredOptions = searchTerm 
           ? options.filter(opt => opt.toLowerCase().includes(searchTerm.toLowerCase()))
           : options;
           
         return (
           <div className="space-y-2">
-            <Select onValueChange={(value) => form.setValue(field.name, value)}>
-              <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
+            <Select 
+              value={form.watch(field.name) || ""} 
+              onValueChange={(value) => form.setValue(field.name, value)}
+            >
+              <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20 bg-background">
                 <SelectValue placeholder={field.placeholder || `Select ${field.label.toLowerCase()}`} />
               </SelectTrigger>
-              <SelectContent className="max-h-60">
-                {smartSuggestions.length > 10 && (
+              <SelectContent className="max-h-60 bg-background border shadow-md z-50">
+                {options.length > 10 && (
                   <div className="p-2 border-b">
                     <Input
                       placeholder="Search options..."
@@ -192,14 +198,20 @@ export const TemplateFieldRenderer: React.FC<TemplateFieldRendererProps> = ({ fi
                     />
                   </div>
                 )}
-                {filteredOptions.map((option) => (
-                  <SelectItem key={option} value={option}>
-                    {option}
+                {filteredOptions.length === 0 ? (
+                  <SelectItem value="" disabled>
+                    No options available
                   </SelectItem>
-                ))}
+                ) : (
+                  filteredOptions.map((option) => (
+                    <SelectItem key={option} value={option} className="cursor-pointer">
+                      {option}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
-            {smartSuggestions.length > 0 && (
+            {!field.options && smartSuggestions.length > 0 && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Star className="h-3 w-3" />
                 <span>Smart suggestions enabled</span>
@@ -242,6 +254,77 @@ export const TemplateFieldRenderer: React.FC<TemplateFieldRendererProps> = ({ fi
               </Badge>
               <span>{field.max || 100}</span>
             </div>
+          </div>
+        );
+        
+      case 'multiselect':
+        const multiOptions = field.options && field.options.length > 0 
+          ? field.options 
+          : smartSuggestions;
+        const selectedValues = form.watch(field.name) || [];
+        
+        return (
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border rounded-md p-2 bg-background">
+              {multiOptions.map((option) => (
+                <label key={option} className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedValues.includes(option)}
+                    onChange={(e) => {
+                      const current = selectedValues;
+                      if (e.target.checked) {
+                        form.setValue(field.name, [...current, option]);
+                      } else {
+                        form.setValue(field.name, current.filter((v: string) => v !== option));
+                      }
+                    }}
+                    className="rounded border-input"
+                  />
+                  <span className="text-sm">{option}</span>
+                </label>
+              ))}
+            </div>
+            {selectedValues.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {selectedValues.map((value: string) => (
+                  <Badge key={value} variant="secondary" className="text-xs">
+                    {value}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+        
+      case 'currency':
+        return (
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">$</span>
+            <Input
+              type="number"
+              min={field.min || 0}
+              step={field.step || 0.01}
+              placeholder={field.placeholder || "0.00"}
+              className="pl-8 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+              {...form.register(field.name, { valueAsNumber: true })}
+            />
+          </div>
+        );
+        
+      case 'percentage':
+        return (
+          <div className="relative">
+            <Input
+              type="number"
+              min={field.min || 0}
+              max={field.max || 100}
+              step={field.step || 0.1}
+              placeholder={field.placeholder || "0"}
+              className="pr-8 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+              {...form.register(field.name, { valueAsNumber: true })}
+            />
+            <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">%</span>
           </div>
         );
         
