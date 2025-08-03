@@ -163,13 +163,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Initialize auth state
   useEffect(() => {
+    console.log('Auth initialization starting...');
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state change:', event, 'session exists:', !!session);
         setSession(session);
         setUser(session?.user ?? null);
 
         if (session?.user) {
+          console.log('User found, fetching profile for:', session.user.id);
           // Check account security
           const isSecure = await checkAccountSecurity(session.user.id);
           if (!isSecure) {
@@ -184,6 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           // Fetch profile
           const userProfile = await fetchProfile(session.user.id);
+          console.log('Profile fetched:', userProfile);
           setProfile(userProfile);
 
           // Log successful authentication
@@ -199,6 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
           }
         } else {
+          console.log('No user, clearing profile');
           setProfile(null);
         }
 
@@ -207,15 +212,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    console.log('Checking for existing session...');
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      console.log('Existing session check:', !!session, 'error:', error);
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        fetchProfile(session.user.id).then(setProfile);
+        console.log('Existing session found, fetching profile...');
+        fetchProfile(session.user.id).then((profile) => {
+          console.log('Profile from existing session:', profile);
+          setProfile(profile);
+          setLoading(false);
+        });
+      } else {
+        setLoading(false);
       }
-      
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
