@@ -12,6 +12,7 @@ import DocumentList from "./pages/DocumentList";
 import DocumentEditor from "./pages/DocumentEditor";
 import DocumentViewer from "./pages/DocumentViewer";
 import DocumentUpload from "./pages/DocumentUpload";
+import Templates from "./pages/Templates";
 import ClientDashboard from "./pages/ClientDashboard";
 import ReviewerDashboard from "./pages/ReviewerDashboard";
 import ReviewerDocumentView from "./pages/ReviewerDocumentView";
@@ -68,6 +69,14 @@ const AppRoot = () => (
               element={
                 <ProtectedRoute>
                   <DocumentUpload />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/app/templates" 
+              element={
+                <ProtectedRoute>
+                  <Templates />
                 </ProtectedRoute>
               } 
             />

@@ -92,13 +92,13 @@ export default function App() {
               </div>
               
               <Button 
-                variant="outline" 
+                variant="destructive" 
                 size="sm" 
                 onClick={handleSignOut}
-                className="shrink-0"
+                className="shrink-0 font-medium"
               >
                 <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline ml-2">Logout</span>
+                <span className="sm:inline ml-2">Logout</span>
               </Button>
             </div>
           </div>
@@ -129,10 +129,10 @@ export default function App() {
                   Upload
                 </Button>
               </Link>
-              <Link to="/app/documents/new" className="flex-1 sm:flex-none">
+              <Link to="/app/templates" className="flex-1 sm:flex-none">
                 <Button variant="outline" size="sm" className="w-full">
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Document
+                  <FileText className="h-4 w-4 mr-2" />
+                  Templates
                 </Button>
               </Link>
             </>
@@ -161,44 +161,30 @@ export default function App() {
           </CardHeader>
         </Card>
 
-        {/* Templates Preview for Clients */}
+        {/* Quick Actions for Clients */}
         {profile.role === 'client' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center text-lg">
                 <FileText className="h-5 w-5 mr-2" />
-                Document Templates
+                Quick Actions
               </CardTitle>
               <CardDescription>
-                Quick access to legal document templates
+                Get started with your document management
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="p-4 border rounded-lg hover:bg-accent cursor-pointer" onClick={() => window.location.href = '/app/upload?template=contract'}>
-                  <h4 className="font-medium">Contract Template</h4>
-                  <p className="text-sm text-muted-foreground">Legal contract forms</p>
-                </div>
-                <div className="p-4 border rounded-lg hover:bg-accent cursor-pointer" onClick={() => window.location.href = '/app/upload?template=agreement'}>
-                  <h4 className="font-medium">Agreement Template</h4>
-                  <p className="text-sm text-muted-foreground">Service agreements</p>
-                </div>
-                <div className="p-4 border rounded-lg hover:bg-accent cursor-pointer" onClick={() => window.location.href = '/app/upload?template=nda'}>
-                  <h4 className="font-medium">NDA Template</h4>
-                  <p className="text-sm text-muted-foreground">Non-disclosure agreements</p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Link to="/app/upload" className="flex-1">
-                  <Button variant="outline" className="w-full">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload Document
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Link to="/app/templates" className="flex-1">
+                  <Button variant="default" className="w-full h-20 flex flex-col gap-2">
+                    <FileText className="h-6 w-6" />
+                    <span>Browse Templates</span>
                   </Button>
                 </Link>
-                <Link to="/app/documents" className="flex-1">
-                  <Button variant="outline" className="w-full">
-                    <FileText className="h-4 w-4 mr-2" />
-                    View All Documents
+                <Link to="/app/upload" className="flex-1">
+                  <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                    <Upload className="h-6 w-6" />
+                    <span>Upload Document</span>
                   </Button>
                 </Link>
               </div>
