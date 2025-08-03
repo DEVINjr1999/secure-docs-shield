@@ -333,7 +333,6 @@ export type Database = {
           account_locked_until: string | null
           account_status: string
           avatar_url: string | null
-          backup_codes: string[] | null
           created_at: string
           deleted_at: string | null
           email_verified_at: string | null
@@ -348,7 +347,6 @@ export type Database = {
           locale: string | null
           mfa_enabled: boolean | null
           mfa_method: string | null
-          mfa_secret: string | null
           mfa_verified_at: string | null
           phone: string | null
           privacy_consent_at: string | null
@@ -365,7 +363,6 @@ export type Database = {
           account_locked_until?: string | null
           account_status?: string
           avatar_url?: string | null
-          backup_codes?: string[] | null
           created_at?: string
           deleted_at?: string | null
           email_verified_at?: string | null
@@ -380,7 +377,6 @@ export type Database = {
           locale?: string | null
           mfa_enabled?: boolean | null
           mfa_method?: string | null
-          mfa_secret?: string | null
           mfa_verified_at?: string | null
           phone?: string | null
           privacy_consent_at?: string | null
@@ -397,7 +393,6 @@ export type Database = {
           account_locked_until?: string | null
           account_status?: string
           avatar_url?: string | null
-          backup_codes?: string[] | null
           created_at?: string
           deleted_at?: string | null
           email_verified_at?: string | null
@@ -412,7 +407,6 @@ export type Database = {
           locale?: string | null
           mfa_enabled?: boolean | null
           mfa_method?: string | null
-          mfa_secret?: string | null
           mfa_verified_at?: string | null
           phone?: string | null
           privacy_consent_at?: string | null

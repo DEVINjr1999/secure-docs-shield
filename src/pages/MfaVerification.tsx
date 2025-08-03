@@ -7,45 +7,56 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Shield, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { authenticator } from 'otplib';
-import CryptoJS from 'crypto-js';
-
-// Configure otplib for browser compatibility
-authenticator.options = {
-  crypto: {
-    createHmac: (algorithm: string, key: string | Buffer) => {
-      const keyWordArray = typeof key === 'string' 
-        ? CryptoJS.enc.Base32.parse(key)
-        : CryptoJS.lib.WordArray.create(key);
-      
-      return {
-        update: (data: string) => {
-          const hmac = CryptoJS.HmacSHA1(data, keyWordArray);
-          return {
-            digest: () => {
-              const hex = hmac.toString(CryptoJS.enc.Hex);
-              const bytes = new Uint8Array(hex.length / 2);
-              for (let i = 0; i < hex.length; i += 2) {
-                bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
-              }
-              return bytes;
-            }
-          };
-        }
-      };
-    }
-  }
-};
+import { supabase } from '@/integrations/supabase/client';
 
 export default function MfaVerification() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { profile, updateProfile } = useAuth();
+  const { updateProfile } = useAuth();
   const [verificationCode, setVerificationCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [challengeId, setChallengeId] = useState<string>('');
 
   const from = location.state?.from || '/app';
+
+  const createChallenge = async () => {
+    try {
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const totpFactor = factors?.totp?.[0];
+
+      if (!totpFactor) {
+        toast({
+          title: "Error",
+          description: "MFA is not properly configured. Please contact support.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const { data, error } = await supabase.auth.mfa.challenge({
+        factorId: totpFactor.id
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setChallengeId(data.id);
+    } catch (error) {
+      console.error('Error creating MFA challenge:', error);
+      toast({
+        title: "Error",
+        description: "Failed to initialize MFA verification. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Create challenge on component mount
+  useState(() => {
+    createChallenge();
+  });
 
   const handleVerify = async () => {
     if (!verificationCode || verificationCode.length !== 6) {
@@ -57,10 +68,10 @@ export default function MfaVerification() {
       return;
     }
 
-    if (!profile?.mfa_secret) {
+    if (!challengeId) {
       toast({
         title: "Error",
-        description: "MFA is not properly configured. Please contact support.",
+        description: "MFA challenge not initialized. Please refresh the page.",
         variant: "destructive"
       });
       return;
@@ -68,39 +79,21 @@ export default function MfaVerification() {
 
     setIsLoading(true);
     try {
-      // Check if it's a backup code first
-      if (profile.backup_codes && profile.backup_codes.includes(verificationCode.toUpperCase())) {
-        // Remove used backup code
-        const updatedBackupCodes = profile.backup_codes.filter(
-          code => code !== verificationCode.toUpperCase()
-        );
-        
-        await updateProfile({
-          backup_codes: updatedBackupCodes,
-          mfa_verified_at: new Date().toISOString()
-        });
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const totpFactor = factors?.totp?.[0];
 
-        toast({
-          title: "Success",
-          description: "Backup code verified successfully"
-        });
-        navigate(from, { replace: true });
-        return;
+      if (!totpFactor) {
+        throw new Error('No TOTP factor found');
       }
 
-      // Verify TOTP code
-      const isValid = authenticator.verify({
-        token: verificationCode,
-        secret: profile.mfa_secret
+      const { error } = await supabase.auth.mfa.verify({
+        factorId: totpFactor.id,
+        challengeId,
+        code: verificationCode
       });
 
-      if (!isValid) {
-        toast({
-          title: "Error",
-          description: "Invalid verification code. Please try again.",
-          variant: "destructive"
-        });
-        return;
+      if (error) {
+        throw error;
       }
 
       // Update MFA verification timestamp
@@ -117,9 +110,11 @@ export default function MfaVerification() {
       console.error('MFA verification error:', error);
       toast({
         title: "Error",
-        description: "Error verifying code. Please try again.",
+        description: "Invalid verification code. Please try again.",
         variant: "destructive"
       });
+      // Create a new challenge for retry
+      createChallenge();
     } finally {
       setIsLoading(false);
     }
@@ -154,7 +149,7 @@ export default function MfaVerification() {
               </InputOTPGroup>
             </InputOTP>
             <p className="text-sm text-muted-foreground">
-              Enter the code from your authenticator app or use a backup code
+              Enter the code from your authenticator app
             </p>
           </div>
           

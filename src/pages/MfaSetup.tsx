@@ -1,129 +1,61 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, ArrowLeft, Smartphone, Copy } from 'lucide-react';
+import { Shield, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { authenticator } from 'otplib';
-import QRCode from 'qrcode';
-import CryptoJS from 'crypto-js';
-
-// Configure otplib for browser compatibility
-authenticator.options = {
-  crypto: {
-    createHmac: (algorithm: string, key: string | Buffer) => {
-      const keyWordArray = typeof key === 'string' 
-        ? CryptoJS.enc.Base32.parse(key)
-        : CryptoJS.lib.WordArray.create(key);
-      
-      return {
-        update: (data: string) => {
-          const hmac = CryptoJS.HmacSHA1(data, keyWordArray);
-          return {
-            digest: () => {
-              const hex = hmac.toString(CryptoJS.enc.Hex);
-              const bytes = new Uint8Array(hex.length / 2);
-              for (let i = 0; i < hex.length; i += 2) {
-                bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
-              }
-              return bytes;
-            }
-          };
-        }
-      };
-    }
-  }
-};
-
-const generateSecureSecret = () => {
-  const bytes = new Uint8Array(20);
-  crypto.getRandomValues(bytes);
-  
-  const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  let result = '';
-  let bits = 0;
-  let value = 0;
-  
-  for (let i = 0; i < bytes.length; i++) {
-    value = (value << 8) | bytes[i];
-    bits += 8;
-    
-    while (bits >= 5) {
-      result += base32Chars[(value >>> (bits - 5)) & 31];
-      bits -= 5;
-    }
-  }
-  
-  if (bits > 0) {
-    result += base32Chars[(value << (5 - bits)) & 31];
-  }
-  
-  return result;
-};
+import { supabase } from '@/integrations/supabase/client';
 
 export default function MfaSetup() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { updateProfile, profile } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
+  const { updateProfile } = useAuth();
   const [step, setStep] = useState<'generate' | 'verify'>('generate');
-  const [totpSecret, setTotpSecret] = useState('');
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
-  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [factorId, setFactorId] = useState<string>('');
 
   const from = location.state?.from || '/app';
 
   const generateTOTPSecret = async () => {
     try {
-      const secret = generateSecureSecret();
-      const userEmail = profile?.user_id || 'user@example.com';
-      const appName = 'SecureLegal';
+      setIsLoading(true);
       
-      const otpauth = `otpauth://totp/${encodeURIComponent(appName)}:${encodeURIComponent(userEmail)}?secret=${secret}&issuer=${encodeURIComponent(appName)}`;
-      const qrCode = await QRCode.toDataURL(otpauth);
-      
-      setTotpSecret(secret);
-      setQrCodeUrl(qrCode);
-      
-      const codes = Array.from({ length: 8 }, () => {
-        const bytes = new Uint8Array(3);
-        crypto.getRandomValues(bytes);
-        return Array.from(bytes)
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join('')
-          .toUpperCase();
+      // Use Supabase native MFA enrollment
+      const { data, error } = await supabase.auth.mfa.enroll({
+        factorType: 'totp',
+        friendlyName: 'LegalDoc Authenticator'
       });
-      setBackupCodes(codes);
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        setQrCodeUrl(data.totp.qr_code);
+        setFactorId(data.id);
+      }
     } catch (error) {
       console.error('Error generating TOTP secret:', error);
       toast({
         title: "Error",
-        description: "Failed to generate QR code. Please try again.",
-        variant: "destructive",
+        description: "Failed to generate MFA setup. Please try again.",
+        variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
-  };
-
-  const handleSkip = () => {
-    toast({
-      title: "MFA Setup Skipped",
-      description: "You can set up MFA later in your settings.",
-    });
-    navigate(from, { replace: true });
   };
 
   const handleSetup = async () => {
     if (step === 'generate') {
-      setIsLoading(true);
       await generateTOTPSecret();
       setStep('verify');
-      setIsLoading(false);
     } else {
       if (!verificationCode || verificationCode.length !== 6) {
         toast({
@@ -134,47 +66,35 @@ export default function MfaSetup() {
         return;
       }
 
+      setIsLoading(true);
       try {
-        const isValid = authenticator.verify({
-          token: verificationCode,
-          secret: totpSecret
-        });
-
-        if (!isValid) {
-          toast({
-            title: "Error",
-            description: "Invalid verification code. Please try again.",
-            variant: "destructive"
-          });
-          return;
-        }
-
-        setIsLoading(true);
-        const { error } = await updateProfile({
-          mfa_enabled: true,
-          mfa_method: 'totp',
-          mfa_verified_at: new Date().toISOString(),
-          mfa_secret: totpSecret,
-          backup_codes: backupCodes
+        // Verify the enrollment with Supabase
+        const { data, error } = await supabase.auth.mfa.verify({
+          factorId,
+          code: verificationCode,
+          challengeId: '', // For enrollment, challengeId is not needed
         });
 
         if (error) {
-          toast({
-            title: "Error",
-            description: error.message || "Failed to enable MFA",
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "Success",
-            description: "Multi-factor authentication has been enabled successfully"
-          });
-          navigate(from, { replace: true });
+          throw error;
         }
+
+        // Update profile to track MFA status
+        await updateProfile({
+          mfa_enabled: true,
+          mfa_verified_at: new Date().toISOString()
+        });
+
+        toast({
+          title: "Success",
+          description: "MFA has been successfully configured!"
+        });
+        navigate(from, { replace: true });
       } catch (error) {
+        console.error('MFA setup error:', error);
         toast({
           title: "Error",
-          description: "An unexpected error occurred",
+          description: "Invalid verification code. Please try again.",
           variant: "destructive"
         });
       } finally {
@@ -183,12 +103,9 @@ export default function MfaSetup() {
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: "Copied",
-      description: "Text copied to clipboard"
-    });
+  const handleSkip = () => {
+    // For now, allow skipping MFA (this should be configurable)
+    navigate(from, { replace: true });
   };
 
   return (
@@ -196,94 +113,44 @@ export default function MfaSetup() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <Shield className="h-12 w-12 text-primary mx-auto mb-4" />
-          <CardTitle>
-            {step === 'generate' ? 'Set Up Multi-Factor Authentication' : 'Verify Your Setup'}
-          </CardTitle>
+          <CardTitle>Multi-Factor Authentication</CardTitle>
           <CardDescription>
-            {step === 'generate' 
-              ? "Enhance your account security with two-factor authentication"
-              : "Enter the code from your authenticator app to complete setup"}
+            Set up two-factor authentication to secure your account
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {step === 'generate' ? (
-            <>
-              <p className="text-sm text-muted-foreground text-center">
-                Multi-factor authentication adds an extra layer of security to your account by requiring a second form of verification.
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Click the button below to generate your MFA setup
               </p>
-              
-              <div className="space-y-3">
-                <Button 
-                  onClick={handleSetup}
-                  disabled={isLoading}
-                  className="w-full"
-                >
-                  {isLoading ? "Generating..." : "Generate QR Code"}
-                </Button>
-                
-                <Button 
-                  onClick={handleSkip}
-                  variant="outline"
-                  className="w-full"
-                >
-                  Skip for Now
-                </Button>
-                
-                <Button 
-                  onClick={() => navigate(-1)}
-                  variant="ghost"
-                  className="w-full"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Go Back
-                </Button>
-              </div>
-            </>
+              <Button 
+                onClick={handleSetup}
+                disabled={isLoading}
+                className="w-full"
+              >
+                {isLoading ? "Generating..." : "Generate QR Code"}
+              </Button>
+            </div>
           ) : (
-            <>
-              {qrCodeUrl && (
-                <div className="flex justify-center mb-4">
-                  <img src={qrCodeUrl} alt="QR Code" className="border rounded-lg" />
+            <div className="space-y-6">
+              {/* QR Code Display */}
+              <div className="flex flex-col items-center space-y-4">
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold mb-2">Scan QR Code</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Use your authenticator app to scan this QR code
+                  </p>
                 </div>
-              )}
-              
-              <div className="space-y-2">
-                <Label>Manual Entry Key</Label>
-                <div className="flex items-center gap-2">
-                  <Input value={totpSecret} readOnly className="font-mono text-sm" />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => copyToClipboard(totpSecret)}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
+                
+                {qrCodeUrl && (
+                  <div className="p-4 bg-white rounded-lg border">
+                    <img src={qrCodeUrl} alt="QR Code" className="w-48 h-48" />
+                  </div>
+                )}
               </div>
 
-              {backupCodes.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Backup Codes</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Save these backup codes in a secure location.
-                  </p>
-                  <div className="grid grid-cols-2 gap-2 p-3 bg-muted rounded-lg">
-                    {backupCodes.map((code, index) => (
-                      <code key={index} className="text-sm font-mono">{code}</code>
-                    ))}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => copyToClipboard(backupCodes.join('\n'))}
-                    className="w-full"
-                  >
-                    <Copy className="mr-2 h-4 w-4" />
-                    Copy All Backup Codes
-                  </Button>
-                </div>
-              )}
-
+              {/* Verification */}
               <div className="space-y-2">
                 <Label>Verification Code</Label>
                 <InputOTP value={verificationCode} onChange={setVerificationCode} maxLength={6}>
@@ -301,25 +168,34 @@ export default function MfaSetup() {
                 </p>
               </div>
               
-              <div className="space-y-3">
-                <Button 
-                  onClick={handleSetup}
-                  disabled={isLoading || verificationCode.length !== 6}
-                  className="w-full"
-                >
-                  {isLoading ? "Verifying..." : "Enable MFA"}
-                </Button>
-                
-                <Button 
-                  onClick={() => setStep('generate')}
-                  variant="outline"
-                  className="w-full"
-                >
-                  Back
-                </Button>
-              </div>
-            </>
+              <Button 
+                onClick={handleSetup}
+                disabled={isLoading || verificationCode.length !== 6}
+                className="w-full"
+              >
+                {isLoading ? "Verifying..." : "Complete Setup"}
+              </Button>
+            </div>
           )}
+          
+          <div className="space-y-3">
+            <Button 
+              onClick={handleSkip}
+              variant="outline"
+              className="w-full"
+            >
+              Skip for Now
+            </Button>
+            
+            <Button 
+              onClick={() => navigate('/auth')}
+              variant="ghost"
+              className="w-full"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Login
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -1,75 +1,14 @@
-import { useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { useToast } from "@/hooks/use-toast";
-import { Loader2, Smartphone, Key, Copy, RefreshCw } from "lucide-react";
-import { authenticator } from "otplib";
-import QRCode from "qrcode";
-import CryptoJS from 'crypto-js';
-
-// Configure otplib for browser compatibility
-authenticator.options = {
-  crypto: {
-    createHmac: (algorithm: string, key: string | Buffer) => {
-      // Convert the key to a WordArray that crypto-js can use
-      const keyWordArray = typeof key === 'string' 
-        ? CryptoJS.enc.Base32.parse(key)
-        : CryptoJS.lib.WordArray.create(key);
-      
-      return {
-        update: (data: string) => {
-          const hmac = CryptoJS.HmacSHA1(data, keyWordArray);
-          return {
-            digest: () => {
-              // Convert CryptoJS output to Buffer-like format for otplib
-              const hex = hmac.toString(CryptoJS.enc.Hex);
-              const bytes = new Uint8Array(hex.length / 2);
-              for (let i = 0; i < hex.length; i += 2) {
-                bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
-              }
-              return bytes;
-            }
-          };
-        }
-      };
-    }
-  }
-};
-
-// Browser-compatible TOTP implementation
-const generateSecureSecret = () => {
-  const bytes = new Uint8Array(20); // 160 bits for strong security
-  crypto.getRandomValues(bytes);
-  
-  // Convert to base32 (RFC 4648)
-  const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  let result = '';
-  let bits = 0;
-  let value = 0;
-  
-  for (let i = 0; i < bytes.length; i++) {
-    value = (value << 8) | bytes[i];
-    bits += 8;
-    
-    while (bits >= 5) {
-      result += base32Chars[(value >>> (bits - 5)) & 31];
-      bits -= 5;
-    }
-  }
-  
-  if (bits > 0) {
-    result += base32Chars[(value << (5 - bits)) & 31];
-  }
-  
-  return result;
-};
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { Shield, AlertTriangle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TwoFactorAuthSettingsProps {
   profile: any;
@@ -78,78 +17,58 @@ interface TwoFactorAuthSettingsProps {
 export default function TwoFactorAuthSettings({ profile }: TwoFactorAuthSettingsProps) {
   const { updateProfile } = useAuth();
   const { toast } = useToast();
-  
-  const [isEnabling, setIsEnabling] = useState(false);
-  const [isDisabling, setIsDisabling] = useState(false);
-  const [showSetupDialog, setShowSetupDialog] = useState(false);
+  const [isEnabled, setIsEnabled] = useState(profile?.mfa_enabled || false);
+  const [showEnableDialog, setShowEnableDialog] = useState(false);
   const [showDisableDialog, setShowDisableDialog] = useState(false);
-  const [setupStep, setSetupStep] = useState<'generate' | 'verify'>('generate');
-  
-  const [totpSecret, setTotpSecret] = useState('');
+  const [step, setStep] = useState<'setup' | 'verify'>('setup');
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [disableCode, setDisableCode] = useState('');
-  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [factorId, setFactorId] = useState<string>('');
+  const [challengeId, setChallengeId] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const generateTOTPSecret = async () => {
-    try {
-      console.log('Starting TOTP secret generation...');
-      const secret = generateSecureSecret();
-      console.log('Secret generated:', secret);
-      
-      const userEmail = profile?.user_id || 'user@example.com';
-      const appName = 'Legal Document Manager';
-      
-      // Create OTPAuth URI manually
-      const otpauth = `otpauth://totp/${encodeURIComponent(appName)}:${encodeURIComponent(userEmail)}?secret=${secret}&issuer=${encodeURIComponent(appName)}`;
-      console.log('OTPAuth URI created:', otpauth);
-      
-      const qrCode = await QRCode.toDataURL(otpauth);
-      console.log('QR code generated successfully');
-      
-      setTotpSecret(secret);
-      setQrCodeUrl(qrCode);
-      
-      // Generate backup codes using crypto.getRandomValues
-      const codes = Array.from({ length: 8 }, () => {
-        const bytes = new Uint8Array(3);
-        crypto.getRandomValues(bytes);
-        return Array.from(bytes)
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join('')
-          .toUpperCase();
-      });
-      setBackupCodes(codes);
-      
-      console.log('2FA setup data generated successfully');
-    } catch (error) {
-      console.error('Error generating TOTP secret:', error);
-      toast({
-        title: "Error",
-        description: "Failed to generate QR code. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleToggle2FA = async (checked: boolean) => {
-    if (checked) {
-      // Start the enable flow
-      setShowSetupDialog(true);
-      setSetupStep('generate');
-      await generateTOTPSecret();
-    } else {
-      // Start the disable flow
+  const handleToggle2FA = (checked: boolean) => {
+    if (checked && !isEnabled) {
+      setShowEnableDialog(true);
+      setStep('setup');
+    } else if (!checked && isEnabled) {
       setShowDisableDialog(true);
     }
   };
 
-  const handleContinueSetup = () => {
-    setSetupStep('verify');
+  const generateTOTPSecret = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Use Supabase native MFA enrollment
+      const { data, error } = await supabase.auth.mfa.enroll({
+        factorType: 'totp',
+        friendlyName: 'LegalDoc Authenticator'
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        setQrCodeUrl(data.totp.qr_code);
+        setFactorId(data.id);
+        setStep('verify');
+      }
+    } catch (error) {
+      console.error('Error generating TOTP secret:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate MFA setup. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleVerifyAndEnable = async () => {
-    // Verify the code
     if (!verificationCode || verificationCode.length !== 6) {
       toast({
         title: "Error",
@@ -159,68 +78,77 @@ export default function TwoFactorAuthSettings({ profile }: TwoFactorAuthSettings
       return;
     }
 
-    console.log('Verifying code:', verificationCode);
-    console.log('Secret:', totpSecret);
-
+    setIsLoading(true);
     try {
-      const isValid = authenticator.verify({
-        token: verificationCode,
-        secret: totpSecret
+      // Verify the enrollment with Supabase
+      const { error } = await supabase.auth.mfa.verify({
+        factorId,
+        code: verificationCode,
+        challengeId: '', // For enrollment, challengeId is not needed
       });
 
-      console.log('Verification result:', isValid);
+      if (error) {
+        throw error;
+      }
 
-      if (!isValid) {
+      // Update profile to track MFA status
+      await updateProfile({
+        mfa_enabled: true,
+        mfa_verified_at: new Date().toISOString()
+      });
+
+      setIsEnabled(true);
+      setShowEnableDialog(false);
+      setVerificationCode('');
+      setQrCodeUrl('');
+      setFactorId('');
+
+      toast({
+        title: "Success",
+        description: "Two-factor authentication has been enabled!"
+      });
+    } catch (error) {
+      console.error('MFA setup error:', error);
+      toast({
+        title: "Error",
+        description: "Invalid verification code. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const createDisableChallenge = async () => {
+    try {
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const totpFactor = factors?.totp?.[0];
+
+      if (!totpFactor) {
         toast({
           title: "Error",
-          description: "Invalid verification code. Please try again.",
+          description: "No MFA factor found.",
           variant: "destructive"
         });
         return;
       }
-    } catch (error) {
-      console.error('Verification error:', error);
-      toast({
-        title: "Error",
-        description: "Error verifying code. Please try again.",
-        variant: "destructive"
-      });
-      return;
-    }
 
-    setIsEnabling(true);
-    try {
-      const { error } = await updateProfile({
-        mfa_enabled: true,
-        mfa_method: 'totp',
-        mfa_verified_at: new Date().toISOString(),
-        mfa_secret: totpSecret,
-        backup_codes: backupCodes
+      const { data, error } = await supabase.auth.mfa.challenge({
+        factorId: totpFactor.id
       });
 
       if (error) {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to enable 2FA",
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Success",
-          description: "Two-factor authentication has been enabled successfully"
-        });
-        setShowSetupDialog(false);
-        setSetupStep('generate');
-        setVerificationCode('');
+        throw error;
       }
+
+      setChallengeId(data.id);
     } catch (error) {
+      console.error('Error creating disable challenge:', error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred",
+        description: "Failed to initialize MFA verification.",
         variant: "destructive"
       });
-    } finally {
-      setIsEnabling(false);
     }
   };
 
@@ -228,176 +156,130 @@ export default function TwoFactorAuthSettings({ profile }: TwoFactorAuthSettings
     if (!disableCode || disableCode.length !== 6) {
       toast({
         title: "Error",
-        description: "Please enter a valid 6-digit code to disable 2FA",
+        description: "Please enter a valid 6-digit code",
         variant: "destructive"
       });
       return;
     }
 
-    setIsDisabling(true);
-    try {
-      // Verify the stored MFA secret first
-      if (profile.mfa_secret) {
-        try {
-          const isValid = authenticator.verify({
-            token: disableCode,
-            secret: profile.mfa_secret
-          });
-
-          if (!isValid) {
-            toast({
-              title: "Error",
-              description: "Invalid verification code. Please try again.",
-              variant: "destructive"
-            });
-            setIsDisabling(false);
-            return;
-          }
-        } catch (error) {
-          toast({
-            title: "Error",
-            description: "Error verifying code. Please try again.",
-            variant: "destructive"
-          });
-          setIsDisabling(false);
-          return;
-        }
-      }
-
-      const { error } = await updateProfile({
-        mfa_enabled: false,
-        mfa_method: null,
-        mfa_verified_at: null,
-        mfa_secret: null,
-        backup_codes: null
-      });
-
-      if (error) {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to disable 2FA",
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Success",
-          description: "Two-factor authentication has been disabled"
-        });
-        setShowDisableDialog(false);
-        setDisableCode('');
-      }
-    } catch (error) {
+    if (!challengeId) {
       toast({
         title: "Error",
-        description: "An unexpected error occurred",
+        description: "MFA challenge not initialized. Please try again.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const totpFactor = factors?.totp?.[0];
+
+      if (!totpFactor) {
+        throw new Error('No TOTP factor found');
+      }
+
+      // Verify the code first
+      const { error: verifyError } = await supabase.auth.mfa.verify({
+        factorId: totpFactor.id,
+        challengeId,
+        code: disableCode
+      });
+
+      if (verifyError) {
+        throw verifyError;
+      }
+
+      // Unenroll the factor
+      const { error: unenrollError } = await supabase.auth.mfa.unenroll({
+        factorId: totpFactor.id
+      });
+
+      if (unenrollError) {
+        throw unenrollError;
+      }
+
+      // Update profile
+      await updateProfile({
+        mfa_enabled: false,
+        mfa_verified_at: null
+      });
+
+      setIsEnabled(false);
+      setShowDisableDialog(false);
+      setDisableCode('');
+      setChallengeId('');
+
+      toast({
+        title: "Success",
+        description: "Two-factor authentication has been disabled."
+      });
+    } catch (error) {
+      console.error('MFA disable error:', error);
+      toast({
+        title: "Error",
+        description: "Invalid verification code. Please try again.",
         variant: "destructive"
       });
     } finally {
-      setIsDisabling(false);
+      setIsLoading(false);
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: "Copied",
-      description: "Text copied to clipboard"
-    });
-  };
-
   return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-medium">Two-Factor Authentication</h3>
-      
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <p className="font-medium">2FA Status</p>
-          <p className="text-sm text-muted-foreground">
-            {profile.mfa_enabled 
-              ? "Two-factor authentication is enabled for enhanced security" 
-              : "Add an extra layer of security to your account"}
-          </p>
-          {profile.mfa_method && (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Shield className="h-5 w-5" />
+          Two-Factor Authentication
+        </CardTitle>
+        <CardDescription>
+          Add an extra layer of security to your account
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-medium">2FA Status</p>
             <p className="text-sm text-muted-foreground">
-              Method: {profile.mfa_method.toUpperCase()}
+              {isEnabled ? "Enabled" : "Disabled"}
             </p>
-          )}
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <Badge variant={profile.mfa_enabled ? "default" : "secondary"}>
-            {profile.mfa_enabled ? "Enabled" : "Disabled"}
-          </Badge>
-          
+          </div>
           <Switch
-            checked={profile.mfa_enabled}
+            checked={isEnabled}
             onCheckedChange={handleToggle2FA}
-            disabled={isEnabling || isDisabling}
+            disabled={isLoading}
           />
         </div>
-      </div>
 
-      {/* Setup Dialog */}
-      <Dialog open={showSetupDialog} onOpenChange={setShowSetupDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Smartphone className="h-5 w-5" />
-              {setupStep === 'generate' ? 'Set Up Two-Factor Authentication' : 'Verify Your Setup'}
-            </DialogTitle>
-            <DialogDescription>
-              {setupStep === 'generate' 
-                ? "Scan the QR code with your authenticator app or enter the secret key manually."
-                : "Enter the 6-digit code from your authenticator app to complete setup."}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {setupStep === 'generate' ? (
-              <>
-                {qrCodeUrl && (
-                  <div className="flex justify-center">
-                    <img src={qrCodeUrl} alt="QR Code" className="border rounded-lg" />
-                  </div>
-                )}
-                
-                <div className="space-y-2">
-                  <Label>Manual Entry Key</Label>
-                  <div className="flex items-center gap-2">
-                    <Input value={totpSecret} readOnly className="font-mono text-sm" />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyToClipboard(totpSecret)}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
+        {/* Enable MFA Dialog */}
+        <Dialog open={showEnableDialog} onOpenChange={(open) => {
+          setShowEnableDialog(open);
+          if (open && step === 'setup') {
+            generateTOTPSecret();
+          }
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Enable Two-Factor Authentication</DialogTitle>
+              <DialogDescription>
+                {step === 'setup' 
+                  ? "Scan the QR code with your authenticator app"
+                  : "Enter the code from your authenticator app to complete setup"}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              {step === 'setup' ? (
+                <div className="flex flex-col items-center space-y-4">
+                  {qrCodeUrl && (
+                    <div className="p-4 bg-white rounded-lg border">
+                      <img src={qrCodeUrl} alt="QR Code" className="w-48 h-48" />
+                    </div>
+                  )}
                 </div>
-
-                <div className="space-y-2">
-                  <Label>Backup Codes</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Save these backup codes in a secure location. You can use them to access your account if you lose your authenticator device.
-                  </p>
-                  <div className="grid grid-cols-2 gap-2 p-3 bg-muted rounded-lg">
-                    {backupCodes.map((code, index) => (
-                      <code key={index} className="text-sm font-mono">{code}</code>
-                    ))}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => copyToClipboard(backupCodes.join('\n'))}
-                    className="w-full"
-                  >
-                    <Copy className="mr-2 h-4 w-4" />
-                    Copy All Backup Codes
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <div className="space-y-4">
+              ) : (
                 <div className="space-y-2">
                   <Label>Verification Code</Label>
                   <InputOTP value={verificationCode} onChange={setVerificationCode} maxLength={6}>
@@ -414,74 +296,100 @@ export default function TwoFactorAuthSettings({ profile }: TwoFactorAuthSettings
                     Enter the 6-digit code from your authenticator app
                   </p>
                 </div>
-              </div>
-            )}
-          </div>
-          
-          <DialogFooter className="sm:justify-start">
-            {setupStep === 'generate' ? (
-              <>
-                <Button variant="outline" onClick={() => setShowSetupDialog(false)}>
+              )}
+              
+              <div className="flex justify-end space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowEnableDialog(false);
+                    setStep('setup');
+                    setVerificationCode('');
+                    setQrCodeUrl('');
+                    setFactorId('');
+                  }}
+                >
                   Cancel
                 </Button>
-                <Button onClick={handleContinueSetup}>
-                  Continue
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button variant="outline" onClick={() => setSetupStep('generate')}>
-                  Back
-                </Button>
-                <Button onClick={handleVerifyAndEnable} disabled={isEnabling}>
-                  {isEnabling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Enable 2FA
-                </Button>
-              </>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Disable Dialog */}
-      <AlertDialog open={showDisableDialog} onOpenChange={setShowDisableDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Disable Two-Factor Authentication</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will remove the extra security layer from your account. Enter your current 2FA code to confirm.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Verification Code</Label>
-              <InputOTP value={disableCode} onChange={setDisableCode} maxLength={6}>
-                <InputOTPGroup className="gap-2">
-                  <InputOTPSlot index={0} />
-                  <InputOTPSlot index={1} />
-                  <InputOTPSlot index={2} />
-                  <InputOTPSlot index={3} />
-                  <InputOTPSlot index={4} />
-                  <InputOTPSlot index={5} />
-                </InputOTPGroup>
-              </InputOTP>
+                {step === 'setup' ? (
+                  <Button onClick={() => setStep('verify')} disabled={!qrCodeUrl}>
+                    Continue
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleVerifyAndEnable}
+                    disabled={isLoading || verificationCode.length !== 6}
+                  >
+                    {isLoading ? "Enabling..." : "Enable 2FA"}
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-          
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDisable2FA}
-              disabled={isDisabling}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDisabling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Disable 2FA
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Disable MFA Dialog */}
+        <Dialog open={showDisableDialog} onOpenChange={(open) => {
+          setShowDisableDialog(open);
+          if (open) {
+            createDisableChallenge();
+          } else {
+            setChallengeId('');
+            setDisableCode('');
+          }
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                Disable Two-Factor Authentication
+              </DialogTitle>
+              <DialogDescription>
+                Enter your current verification code to disable 2FA. This will make your account less secure.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Verification Code</Label>
+                <InputOTP value={disableCode} onChange={setDisableCode} maxLength={6}>
+                  <InputOTPGroup className="gap-2">
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+                <p className="text-sm text-muted-foreground">
+                  Enter the code from your authenticator app
+                </p>
+              </div>
+              
+              <div className="flex justify-end space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowDisableDialog(false);
+                    setDisableCode('');
+                    setChallengeId('');
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDisable2FA}
+                  disabled={isLoading || disableCode.length !== 6}
+                >
+                  {isLoading ? "Disabling..." : "Disable 2FA"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
   );
 }
