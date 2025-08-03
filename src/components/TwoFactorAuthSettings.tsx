@@ -34,21 +34,38 @@ export default function TwoFactorAuthSettings({ profile }: TwoFactorAuthSettings
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
 
   const generateTOTPSecret = async () => {
-    const secret = OTPAuth.authenticator.generateSecret();
-    const userEmail = profile?.user_id || 'user@example.com';
-    const appName = 'Legal Document Manager';
-    
-    const otpauth = OTPAuth.authenticator.keyuri(userEmail, appName, secret);
-    const qrCode = await QRCode.toDataURL(otpauth);
-    
-    setTotpSecret(secret);
-    setQrCodeUrl(qrCode);
-    
-    // Generate backup codes
-    const codes = Array.from({ length: 8 }, () => 
-      Math.random().toString(36).substring(2, 8).toUpperCase()
-    );
-    setBackupCodes(codes);
+    try {
+      console.log('Starting TOTP secret generation...');
+      const secret = OTPAuth.authenticator.generateSecret();
+      console.log('Secret generated:', secret);
+      
+      const userEmail = profile?.user_id || 'user@example.com';
+      const appName = 'Legal Document Manager';
+      
+      const otpauth = OTPAuth.authenticator.keyuri(userEmail, appName, secret);
+      console.log('OTPAuth URI created:', otpauth);
+      
+      const qrCode = await QRCode.toDataURL(otpauth);
+      console.log('QR code generated successfully');
+      
+      setTotpSecret(secret);
+      setQrCodeUrl(qrCode);
+      
+      // Generate backup codes
+      const codes = Array.from({ length: 8 }, () => 
+        Math.random().toString(36).substring(2, 8).toUpperCase()
+      );
+      setBackupCodes(codes);
+      
+      console.log('2FA setup data generated successfully');
+    } catch (error) {
+      console.error('Error generating TOTP secret:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate QR code. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleToggle2FA = async (checked: boolean) => {
