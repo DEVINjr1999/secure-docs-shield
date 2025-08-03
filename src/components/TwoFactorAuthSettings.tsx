@@ -10,8 +10,36 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Smartphone, Key, Copy, RefreshCw } from "lucide-react";
-import * as OTPAuth from "otplib";
+import { authenticator } from "otplib";
 import QRCode from "qrcode";
+
+// Browser-compatible TOTP implementation
+const generateSecureSecret = () => {
+  const bytes = new Uint8Array(20); // 160 bits for strong security
+  crypto.getRandomValues(bytes);
+  
+  // Convert to base32 (RFC 4648)
+  const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let result = '';
+  let bits = 0;
+  let value = 0;
+  
+  for (let i = 0; i < bytes.length; i++) {
+    value = (value << 8) | bytes[i];
+    bits += 8;
+    
+    while (bits >= 5) {
+      result += base32Chars[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  
+  if (bits > 0) {
+    result += base32Chars[(value << (5 - bits)) & 31];
+  }
+  
+  return result;
+};
 
 interface TwoFactorAuthSettingsProps {
   profile: any;
@@ -36,13 +64,14 @@ export default function TwoFactorAuthSettings({ profile }: TwoFactorAuthSettings
   const generateTOTPSecret = async () => {
     try {
       console.log('Starting TOTP secret generation...');
-      const secret = OTPAuth.authenticator.generateSecret();
+      const secret = generateSecureSecret();
       console.log('Secret generated:', secret);
       
       const userEmail = profile?.user_id || 'user@example.com';
       const appName = 'Legal Document Manager';
       
-      const otpauth = OTPAuth.authenticator.keyuri(userEmail, appName, secret);
+      // Create OTPAuth URI manually
+      const otpauth = `otpauth://totp/${encodeURIComponent(appName)}:${encodeURIComponent(userEmail)}?secret=${secret}&issuer=${encodeURIComponent(appName)}`;
       console.log('OTPAuth URI created:', otpauth);
       
       const qrCode = await QRCode.toDataURL(otpauth);
@@ -51,10 +80,15 @@ export default function TwoFactorAuthSettings({ profile }: TwoFactorAuthSettings
       setTotpSecret(secret);
       setQrCodeUrl(qrCode);
       
-      // Generate backup codes
-      const codes = Array.from({ length: 8 }, () => 
-        Math.random().toString(36).substring(2, 8).toUpperCase()
-      );
+      // Generate backup codes using crypto.getRandomValues
+      const codes = Array.from({ length: 8 }, () => {
+        const bytes = new Uint8Array(3);
+        crypto.getRandomValues(bytes);
+        return Array.from(bytes)
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('')
+          .toUpperCase();
+      });
       setBackupCodes(codes);
       
       console.log('2FA setup data generated successfully');
@@ -95,7 +129,7 @@ export default function TwoFactorAuthSettings({ profile }: TwoFactorAuthSettings
       return;
     }
 
-    const isValid = OTPAuth.authenticator.verify({
+    const isValid = authenticator.verify({
       token: verificationCode,
       secret: totpSecret
     });
