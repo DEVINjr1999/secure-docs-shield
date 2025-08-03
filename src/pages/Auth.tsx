@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, Eye, EyeOff, Shield, Lock, AlertTriangle } from 'lucide-react';
+import ReCAPTCHA from 'react-google-recaptcha';
 
 export default function Auth() {
   const { user, signIn, signUp, resetPassword, loading } = useAuth();
@@ -29,9 +30,11 @@ export default function Auth() {
   const [fullName, setFullName] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   
   const [error, setError] = useState<string>('');
   const [successMessage, setSuccessMessage] = useState<string>('');
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -105,8 +108,14 @@ export default function Auth() {
       return;
     }
 
+    if (!captchaToken) {
+      setError('Please complete the CAPTCHA verification');
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const { error } = await signUp(email, password, fullName);
+      const { error } = await signUp(email, password, fullName, captchaToken);
       
       if (error) {
         setError(error.message);
@@ -115,6 +124,9 @@ export default function Auth() {
           description: error.message,
           variant: "destructive",
         });
+        // Reset captcha on error
+        recaptchaRef.current?.reset();
+        setCaptchaToken(null);
       } else {
         setSuccessMessage('Please check your email to verify your account before signing in.');
         setActiveTab('signin');
@@ -122,9 +134,20 @@ export default function Auth() {
           title: "Account Created",
           description: "Please check your email to verify your account.",
         });
+        // Reset form
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+        setFullName('');
+        setTermsAccepted(false);
+        setPrivacyAccepted(false);
+        recaptchaRef.current?.reset();
+        setCaptchaToken(null);
       }
     } catch (err: any) {
       setError(err.message);
+      recaptchaRef.current?.reset();
+      setCaptchaToken(null);
     } finally {
       setIsLoading(false);
     }
@@ -400,10 +423,20 @@ export default function Auth() {
                     </div>
                   </div>
 
+                  <div className="flex justify-center">
+                    <ReCAPTCHA
+                      ref={recaptchaRef}
+                      sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI" // Test site key
+                      onChange={(token) => setCaptchaToken(token)}
+                      onExpired={() => setCaptchaToken(null)}
+                      onError={() => setCaptchaToken(null)}
+                    />
+                  </div>
+
                   <Button 
                     type="submit" 
                     className="w-full" 
-                    disabled={isLoading || !termsAccepted || !privacyAccepted}
+                    disabled={isLoading || !termsAccepted || !privacyAccepted || !captchaToken}
                   >
                     {isLoading ? (
                       <>
