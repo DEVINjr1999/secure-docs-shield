@@ -1,8 +1,30 @@
 import CryptoJS from 'crypto-js';
 
-// Generate a random encryption key
+// Generate a random encryption key (deprecated - use server-side generation)
 export const generateEncryptionKey = (): string => {
+  console.warn('Client-side key generation is deprecated. Use generateSecureEncryptionKey instead.');
   return CryptoJS.lib.WordArray.random(256 / 8).toString();
+};
+
+// Server-side secure encryption key generation
+export const generateSecureEncryptionKey = async (documentId: string) => {
+  const { supabase } = await import('@/integrations/supabase/client');
+  
+  const { data, error } = await supabase.rpc('generate_secure_encryption_key', {
+    p_document_id: documentId
+  });
+
+  if (error) {
+    throw new Error(`Failed to generate secure encryption key: ${error.message}`);
+  }
+
+  const result = data as { success: boolean; key: string; key_hash: string; error?: string };
+
+  return {
+    key: result.key,
+    keyHash: result.key_hash,
+    success: result.success
+  };
 };
 
 // Encrypt data with AES

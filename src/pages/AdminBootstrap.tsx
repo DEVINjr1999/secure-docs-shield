@@ -14,42 +14,27 @@ export default function AdminBootstrap() {
   const handleCreateAdmin = async () => {
     setLoading(true);
     try {
-      // First check if user exists
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
+      // Use secure RPC function instead of direct database update
+      const { data, error } = await supabase.rpc('promote_to_admin', {
+        p_user_id: userId
+      });
 
-      if (profileError || !profile) {
+      if (error) {
+        console.error('Promotion error:', error);
         toast({
           title: "Error",
-          description: "User not found",
+          description: `Failed to promote user: ${error.message}`,
           variant: "destructive",
         });
         return;
       }
 
-      // Check if already admin
-      if (profile.role === 'admin') {
-        toast({
-          title: "Info",
-          description: "User is already an admin",
-        });
-        return;
-      }
+      const result = data as { success: boolean; error?: string; message?: string };
 
-      // Direct update to admin role
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ role: 'admin' })
-        .eq('user_id', userId);
-
-      if (updateError) {
-        console.error('Update error:', updateError);
+      if (!result.success) {
         toast({
           title: "Error",
-          description: `Failed to promote user: ${updateError.message}`,
+          description: result.error || "Failed to promote user",
           variant: "destructive",
         });
         return;
@@ -57,7 +42,7 @@ export default function AdminBootstrap() {
 
       toast({
         title: "Success",
-        description: "User promoted to admin successfully!",
+        description: result.message || "User promoted successfully",
       });
 
     } catch (error) {

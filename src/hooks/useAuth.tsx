@@ -522,12 +522,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update(updates)
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
         .eq('user_id', user.id);
 
       if (error) {
         await logAuditEvent('profile_update_failure', 'profile', false, error.message);
         return { error };
+      }
+
+      // Check if this is a security-sensitive update
+      const securityFields = ['role', 'account_status', 'mfa_enabled'];
+      const isSecurityUpdate = Object.keys(updates).some(key => securityFields.includes(key));
+      
+      if (isSecurityUpdate) {
+        // Invalidate sessions for security updates
+        await supabase.rpc('invalidate_user_sessions', {
+          p_user_id: user.id,
+          p_reason: 'security_profile_update'
+        });
+        
+        // Force re-authentication for security changes
+        if (updates.role || updates.account_status) {
+          await signOut();
+          return { error: null };
+        }
       }
 
       await logAuditEvent('profile_update_success', 'profile', true, undefined, {

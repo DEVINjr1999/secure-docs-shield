@@ -18,6 +18,7 @@ import {
   Printer
 } from 'lucide-react';
 import { formatDate } from 'date-fns';
+import PrintStyles from '@/components/PrintStyles';
 
 interface TemplateField {
   name: string;
@@ -291,22 +292,8 @@ export function DocumentTemplateRenderer({
         </CardContent>
       </Card>
 
-      {/* Print Styles */}
-      <style dangerouslySetInnerHTML={{
-        __html: `
-          @media print {
-            .print\\:hidden {
-              display: none !important;
-            }
-            .print\\:shadow-none {
-              box-shadow: none !important;
-            }
-            .print\\:border {
-              border: 1px solid #e5e7eb !important;
-            }
-          }
-        `
-      }} />
+      {/* Print Styles - Using secure CSS injection */}
+      <PrintStyles />
     </div>
   );
 }

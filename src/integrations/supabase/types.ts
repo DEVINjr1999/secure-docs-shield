@@ -469,6 +469,10 @@ export type Database = {
         Args: { p_document_id: string }
         Returns: string
       }
+      generate_secure_encryption_key: {
+        Args: { p_document_id: string }
+        Returns: Json
+      }
       get_user_profile: {
         Args: { p_user_id: string }
         Returns: {
@@ -506,6 +510,10 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: number
       }
+      invalidate_user_sessions: {
+        Args: { p_user_id: string; p_reason?: string }
+        Returns: undefined
+      }
       is_account_locked: {
         Args: { p_user_id: string }
         Returns: boolean
@@ -531,6 +539,10 @@ export type Database = {
           p_metadata?: Json
         }
         Returns: string
+      }
+      promote_to_admin: {
+        Args: { p_user_id: string }
+        Returns: Json
       }
       reset_failed_login_attempts: {
         Args: { p_user_id: string }
