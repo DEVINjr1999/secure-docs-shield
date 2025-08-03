@@ -1,3 +1,4 @@
+import TemplateSelector from '@/components/TemplateSelector';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -159,6 +160,13 @@ export default function App() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Template Selection for Clients */}
+            {profile?.role === 'client' && (
+              <div className="space-y-6">
+                <TemplateSelector />
+              </div>
+            )}
 
             {/* Role-based Dashboard */}
             {renderDashboard()}
