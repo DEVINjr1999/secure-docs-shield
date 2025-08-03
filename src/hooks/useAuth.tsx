@@ -200,50 +200,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Initialize auth state
   useEffect(() => {
     console.log('Auth initialization starting...');
+    let mounted = true;
+    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state change:', event, 'session exists:', !!session);
+        
+        if (!mounted) return;
+        
         setSession(session);
         setUser(session?.user ?? null);
 
-        if (session?.user) {
-          console.log('User found, fetching profile for:', session.user.id);
-          // Check account security
-          const isSecure = await checkAccountSecurity(session.user.id);
-          if (!isSecure) {
-            toast({
-              title: "Account Security Alert",
-              description: "Your account has been temporarily restricted due to security concerns.",
-              variant: "destructive",
-            });
-            await signOut();
-            return;
-          }
-
-          // Fetch profile using secure function
-          const userProfile = await fetchProfile(session.user.id);
-          console.log('Profile fetched:', userProfile);
-          setProfile(userProfile);
-
-          // Log successful authentication
-          if (event === 'SIGNED_IN') {
-            await logAuditEvent('login_success', 'auth', true, undefined, {
-              method: 'email_password',
-              session_id: session.access_token,
-            });
+        try {
+          if (session?.user) {
+            console.log('User found, fetching profile for:', session.user.id);
             
-            // Reset failed login attempts
-            await supabase.rpc('reset_failed_login_attempts', {
-              p_user_id: session.user.id,
-            });
-          }
-        } else {
-          console.log('No user, clearing profile');
-          setProfile(null);
-        }
+            // Check account security with timeout
+            const isSecure = await Promise.race([
+              checkAccountSecurity(session.user.id),
+              new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 3000))
+            ]);
+            
+            if (!isSecure) {
+              toast({
+                title: "Account Security Alert",
+                description: "Your account has been temporarily restricted due to security concerns.",
+                variant: "destructive",
+              });
+              await signOut();
+              return;
+            }
 
-        setLoading(false);
+            // Fetch profile using secure function with timeout
+            const userProfile = await Promise.race([
+              fetchProfile(session.user.id),
+              new Promise<any>((resolve) => setTimeout(() => resolve(null), 3000))
+            ]);
+            
+            console.log('Profile fetched:', userProfile);
+            if (mounted) {
+              setProfile(userProfile);
+            }
+
+            // Log successful authentication (don't block on this)
+            if (event === 'SIGNED_IN') {
+              // Fire and forget - don't await these
+              logAuditEvent('login_success', 'auth', true, undefined, {
+                method: 'email_password',
+                session_id: session.access_token,
+              }).catch(console.warn);
+              
+              // Don't block on this RPC call
+              supabase.rpc('reset_failed_login_attempts', {
+                p_user_id: session.user.id,
+              });
+            }
+          } else {
+            console.log('No user, clearing profile');
+            if (mounted) {
+              setProfile(null);
+            }
+          }
+        } catch (error) {
+          console.error('Error in auth state change handler:', error);
+        } finally {
+          if (mounted) {
+            setLoading(false);
+          }
+        }
       }
     );
 
@@ -251,22 +276,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log('Checking for existing session...');
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       console.log('Existing session check:', !!session, 'error:', error);
+      
+      if (!mounted) return;
+      
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
         console.log('Existing session found, fetching profile...');
-        fetchProfile(session.user.id).then((profile) => {
+        Promise.race([
+          fetchProfile(session.user.id),
+          new Promise<any>((resolve) => setTimeout(() => resolve(null), 3000))
+        ]).then((profile) => {
           console.log('Profile from existing session:', profile);
-          setProfile(profile);
-          setLoading(false);
+          if (mounted) {
+            setProfile(profile);
+            setLoading(false);
+          }
+        }).catch((error) => {
+          console.error('Error fetching profile:', error);
+          if (mounted) {
+            setLoading(false);
+          }
         });
       } else {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }).catch((error) => {
+      console.error('Error getting session:', error);
+      if (mounted) {
         setLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Activity tracking
