@@ -8,6 +8,12 @@ import TemplateSelector from '@/components/TemplateSelector';
 
 const Index = () => {
   const { user, profile } = useAuth();
+  
+  // Debug logging
+  console.log('Index page - User:', !!user);
+  console.log('Index page - Profile:', profile);
+  console.log('Index page - Role:', profile?.role);
+  console.log('Index page - Should show template selector:', user && profile?.role === 'client');
 
   const features = [
     {

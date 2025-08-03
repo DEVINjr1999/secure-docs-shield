@@ -22,6 +22,8 @@ export default function TemplateSelector() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  console.log('TemplateSelector component rendered');
+
   useEffect(() => {
     loadTemplates();
   }, []);
