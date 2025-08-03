@@ -2,13 +2,21 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Shield, Lock, FileText, Users, Activity, ArrowRight } from 'lucide-react';
+import { Shield, Lock, FileText, Users, Activity, ArrowRight, LogOut } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { toast } from '@/hooks/use-toast';
 import TemplateSelector from '@/components/TemplateSelector';
 
 const Index = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, signOut } = useAuth();
   
+  const handleSignOut = async () => {
+    await signOut();
+    toast({
+      title: "Signed Out",
+      description: "You have been successfully signed out.",
+    });
+  };
 
   const features = [
     {
@@ -43,6 +51,21 @@ const Index = () => {
       {/* Hero Section */}
       <section className="relative py-12 sm:py-16 lg:py-20 px-4">
         <div className="container mx-auto text-center">
+          {/* Header with logout for logged in users */}
+          {user && (
+            <div className="absolute top-4 right-4">
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={handleSignOut}
+                className="font-medium"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </div>
+          )}
+          
           <div className="flex items-center justify-center mb-4 sm:mb-6">
             <Shield className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-primary mr-2 sm:mr-3" />
             <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold">SecureLegal</h1>
@@ -59,13 +82,24 @@ const Index = () => {
 
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
             {user ? (
-              <Link to="/app">
-                <Button size="lg" className="w-full sm:w-auto">
-                  <Activity className="mr-2 h-5 w-5" />
-                  Go to Dashboard
-                  <ArrowRight className="ml-2 h-5 w-5" />
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <Link to="/app">
+                  <Button size="lg" className="w-full sm:w-auto">
+                    <Activity className="mr-2 h-5 w-5" />
+                    Go to Dashboard
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+                <Button 
+                  variant="outline" 
+                  size="lg" 
+                  onClick={handleSignOut}
+                  className="w-full sm:w-auto"
+                >
+                  <LogOut className="mr-2 h-5 w-5" />
+                  Logout
                 </Button>
-              </Link>
+              </div>
             ) : (
               <>
                 <Link to="/auth">
