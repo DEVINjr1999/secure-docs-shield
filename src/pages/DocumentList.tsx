@@ -44,8 +44,8 @@ export default function DocumentList() {
         .from('documents')
         .select(`
           *,
-          assigned_reviewer:assigned_reviewer_id(full_name),
-          document_comments!inner(count)
+          reviewer_profile:profiles!documents_assigned_reviewer_id_fkey(full_name),
+          document_comments(count)
         `)
         .order('created_at', { ascending: false });
 
@@ -286,7 +286,7 @@ export default function DocumentList() {
                   
                   {(isRole('legal_reviewer') || isRole('admin')) && (
                     <TableCell>
-                      {document.assigned_reviewer?.full_name || 'Unassigned'}
+                      {document.reviewer_profile?.full_name || 'Unassigned'}
                     </TableCell>
                   )}
                   

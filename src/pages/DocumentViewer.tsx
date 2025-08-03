@@ -62,8 +62,8 @@ export default function DocumentViewer() {
         .from('documents')
         .select(`
           *,
-          user:user_id(id),
-          assigned_reviewer:assigned_reviewer_id(id)
+          user_profile:profiles!documents_user_id_fkey(full_name, role),
+          reviewer_profile:profiles!documents_assigned_reviewer_id_fkey(full_name, role)
         `)
         .eq('id', docId)
         .single();
@@ -103,7 +103,7 @@ export default function DocumentViewer() {
         .from('document_comments')
         .select(`
           *,
-          user:user_id(id)
+          user_profile:profiles!document_comments_user_id_fkey(full_name, role)
         `)
         .eq('document_id', docId);
 
@@ -464,7 +464,7 @@ export default function DocumentViewer() {
                       <div className="flex items-center">
                         <User className="h-4 w-4 mr-2" />
                         <span className="font-medium">
-                          User {comment.user_id === user?.id ? '(You)' : ''}
+                          {comment.user_profile?.full_name || 'Unknown User'} {comment.user_id === user?.id ? '(You)' : ''}
                         </span>
                         {comment.is_internal && (
                           <Badge variant="outline" className="ml-2">Internal</Badge>

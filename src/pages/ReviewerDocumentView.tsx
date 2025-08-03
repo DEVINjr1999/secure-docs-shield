@@ -60,11 +60,7 @@ export default function ReviewerDocumentView() {
         .from('documents')
         .select(`
           *,
-          user:user_id(id),
-          assigned_reviewer:assigned_reviewer_id(id),
-          profiles!documents_user_id_fkey (
-            full_name
-          )
+          user_profile:profiles!documents_user_id_fkey(full_name, role)
         `)
         .eq('id', documentId)
         .eq('assigned_reviewer_id', user.id) // Ensure only assigned reviewer can access
@@ -272,7 +268,7 @@ export default function ReviewerDocumentView() {
             <h1 className="text-3xl font-bold">{document.title}</h1>
             <p className="text-muted-foreground">{document.description}</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Client: {document.profiles?.full_name || 'Unknown'}
+              Client: {document.user_profile?.full_name || 'Unknown'}
             </p>
           </div>
           
