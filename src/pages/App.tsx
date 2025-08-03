@@ -59,42 +59,50 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-background">
-        {/* Header */}
-        <header className="border-b bg-card">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <Shield className="h-6 w-6 text-primary" />
-                <h1 className="text-xl font-semibold">SecureLegal Platform</h1>
+      {/* Header */}
+      <header className="border-b bg-card sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-3 sm:py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
+              <Shield className="h-5 w-5 sm:h-6 sm:w-6 text-primary flex-shrink-0" />
+              <h1 className="text-lg sm:text-xl font-semibold truncate">SecureLegal Platform</h1>
+            </div>
+            
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <div className="hidden sm:flex items-center space-x-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={profile?.avatar_url} />
+                  <AvatarFallback>{getInitials(profile?.full_name)}</AvatarFallback>
+                </Avatar>
+                <div className="text-sm">
+                  <p className="font-medium truncate max-w-32">{profile?.full_name || user?.email}</p>
+                  <Badge variant={getRoleBadgeVariant(profile?.role || 'client')} className="text-xs">
+                    {profile?.role || 'client'}
+                  </Badge>
+                </div>
               </div>
               
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={profile?.avatar_url} />
-                    <AvatarFallback>{getInitials(profile?.full_name)}</AvatarFallback>
-                  </Avatar>
-                  <div className="text-sm">
-                    <p className="font-medium">{profile?.full_name || user?.email}</p>
-                    <Badge variant={getRoleBadgeVariant(profile?.role || 'client')}>
-                      {profile?.role || 'client'}
-                    </Badge>
-                  </div>
-                </div>
-                
-                <Button variant="outline" size="sm" onClick={handleSignOut}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out
-                </Button>
+              {/* Mobile user info */}
+              <div className="sm:hidden">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={profile?.avatar_url} />
+                  <AvatarFallback>{getInitials(profile?.full_name)}</AvatarFallback>
+                </Avatar>
               </div>
+              
+              <Button variant="outline" size="sm" onClick={handleSignOut}>
+                <LogOut className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Sign Out</span>
+              </Button>
             </div>
           </div>
-        </header>
+        </div>
+      </header>
 
-        {/* Main Content */}
-        <main className="container mx-auto px-4 py-8">
-          <div className="space-y-6">
-            {/* Welcome Card */}
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-4 sm:py-6 lg:py-8">
+        <div className="space-y-4 sm:space-y-6">
+          {/* Welcome Card */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
@@ -105,8 +113,8 @@ export default function App() {
                   Secure cybersecurity-focused legal document platform
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-2">
+              <CardContent className="p-4 sm:p-6">
+                <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
                   <div>
                     <h4 className="font-medium mb-2">Account Status</h4>
                     <div className="space-y-2">
@@ -161,17 +169,17 @@ export default function App() {
               </CardContent>
             </Card>
 
-            {/* Template Selection for Clients */}
-            {profile?.role === 'client' && (
-              <div className="space-y-6">
-                <TemplateSelector />
-              </div>
-            )}
+          {/* Template Selection for Clients */}
+          {profile?.role === 'client' && (
+            <div className="space-y-4 sm:space-y-6">
+              <TemplateSelector />
+            </div>
+          )}
 
             {/* Role-based Dashboard */}
             {renderDashboard()}
-          </div>
-        </main>
-      </div>
+        </div>
+      </main>
+    </div>
   );
 }

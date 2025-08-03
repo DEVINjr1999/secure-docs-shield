@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, ArrowRight, Loader2 } from 'lucide-react';
+import { FileText, ArrowRight, Loader2, Upload, RefreshCw } from 'lucide-react';
 
 interface Template {
   id: string;
@@ -66,85 +66,123 @@ export default function TemplateSelector() {
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <div className="text-center space-y-4">
+          <div className="h-8 bg-muted rounded w-64 mx-auto animate-pulse" />
+          <div className="h-4 bg-muted rounded w-96 mx-auto animate-pulse" />
+        </div>
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader className="space-y-2">
+                <div className="h-6 bg-muted rounded" />
+                <div className="h-4 bg-muted rounded w-3/4" />
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="h-4 bg-muted rounded" />
+                <div className="h-4 bg-muted rounded w-1/2" />
+                <div className="h-10 bg-muted rounded" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (templates.length === 0) {
+    return (
+      <div className="text-center py-12 space-y-6">
+        <div className="space-y-4">
+          <FileText className="h-16 w-16 text-muted-foreground mx-auto" />
+          <div>
+            <h3 className="text-xl font-semibold mb-2">No Templates Available</h3>
+            <p className="text-muted-foreground max-w-md mx-auto">
+              Document templates are currently unavailable. This might be temporary - please try again later, 
+              or contact support if the issue persists.
+            </p>
+          </div>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <Button 
+            onClick={() => window.location.reload()} 
+            variant="outline"
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh Templates
+          </Button>
+          <Button onClick={() => navigate('/app/upload')}>
+            <Upload className="mr-2 h-4 w-4" />
+            Upload Custom Document
+          </Button>
+        </div>
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold mb-2">Choose a Legal Document Template</h2>
-        <p className="text-muted-foreground">
-          Get started quickly with our pre-built legal document templates
-        </p>
-      </div>
-
-      {templates.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-12">
-            <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-medium mb-2">No Templates Available</h3>
-            <p className="text-muted-foreground mb-4">
-              There are currently no active document templates available.
-            </p>
-            <Button onClick={() => navigate('/app/upload')}>
-              Upload Your Own Document
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {templates.map((template) => (
-            <Card key={template.id} className="hover:shadow-md transition-shadow cursor-pointer group">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <FileText className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-                  <Badge variant="secondary" className="text-xs">
-                    {formatJurisdiction(template.jurisdiction)}
-                  </Badge>
-                </div>
-                <CardTitle className="text-lg leading-tight">
+      {/* Templates Grid */}
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        {templates.map((template) => (
+          <Card key={template.id} className="flex flex-col h-full hover:shadow-md transition-shadow">
+            <CardHeader className="flex-shrink-0">
+              <div className="flex items-start justify-between gap-2">
+                <CardTitle className="text-base sm:text-lg line-clamp-2">
                   {template.name}
                 </CardTitle>
-                <CardDescription className="line-clamp-2">
-                  {template.description}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="space-y-3">
-                  <div>
-                    <Badge variant="outline">
-                      {formatDocumentType(template.document_type)}
+                <div className="flex flex-col gap-1 flex-shrink-0">
+                  <Badge variant="secondary" className="text-xs">
+                    {formatDocumentType(template.document_type)}
+                  </Badge>
+                  {template.jurisdiction && (
+                    <Badge variant="outline" className="text-xs">
+                      {formatJurisdiction(template.jurisdiction)}
                     </Badge>
-                  </div>
-                  
-                  <Button 
-                    className="w-full group-hover:bg-primary/90 transition-colors"
-                    onClick={() => handleTemplateSelect(template.id)}
-                  >
-                    Use This Template
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      <div className="text-center">
-        <p className="text-muted-foreground mb-4">
-          Don't see what you need? You can also upload your own document.
-        </p>
-        <Button variant="outline" onClick={() => navigate('/app/upload')}>
-          <FileText className="h-4 w-4 mr-2" />
-          Upload Custom Document
-        </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col">
+              <CardDescription className="flex-1 text-sm mb-4 line-clamp-3">
+                {template.description}
+              </CardDescription>
+              <Button 
+                onClick={() => handleTemplateSelect(template.id)}
+                className="w-full mt-auto"
+                size="sm"
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Use This Template
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
       </div>
+
+      {/* Custom Upload Section */}
+      <Card className="border-dashed">
+        <CardContent className="pt-6">
+          <div className="text-center space-y-4">
+            <Upload className="h-8 w-8 text-muted-foreground mx-auto" />
+            <div>
+              <h3 className="font-medium">Need something custom?</h3>
+              <p className="text-sm text-muted-foreground">
+                Upload your own document for review and processing
+              </p>
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/app/upload')}
+              className="w-full sm:w-auto"
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              Upload Custom Document
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
