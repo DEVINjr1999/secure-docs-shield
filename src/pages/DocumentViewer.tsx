@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import AppLayout from '@/components/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -337,17 +338,9 @@ export default function DocumentViewer() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-4 sm:py-8 max-w-7xl">
+    <AppLayout title={document?.title} showBackButton>
+      <div className="container mx-auto px-4 py-4 sm:py-8 max-w-7xl">
       <div className="mb-6">
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/app/documents')}
-          className="mb-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Documents
-        </Button>
-        
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="min-w-0 flex-1">
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold truncate">{document.title}</h1>
@@ -747,6 +740,7 @@ export default function DocumentViewer() {
         <DocumentActivityFeed documentId={docId!} />
         <DocumentTipsPanel documentType={document.document_type} />
       </div>
-    </div>
+      </div>
+    </AppLayout>
   );
 }

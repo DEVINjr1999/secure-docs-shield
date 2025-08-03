@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
+import AppLayout from '@/components/AppLayout';
 import TemplateSelector from '@/components/TemplateSelector';
 import { 
   Shield, 
@@ -57,82 +58,8 @@ export default function Templates() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Simple Fixed Header */}
-      <header className="border-b bg-card sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <Shield className="h-6 w-6 text-primary" />
-              <h1 className="text-xl font-semibold">SecureLegal</h1>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <div className="hidden md:flex items-center gap-3">
-                <div className="text-right">
-                  <p className="text-sm font-medium">{profile.full_name || user?.email}</p>
-                  <Badge variant={getRoleBadgeVariant(profile.role)} className="text-xs">
-                    {profile.role}
-                  </Badge>
-                </div>
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={profile.avatar_url} />
-                  <AvatarFallback>{getInitials(profile.full_name)}</AvatarFallback>
-                </Avatar>
-              </div>
-              
-              <div className="md:hidden">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={profile.avatar_url} />
-                  <AvatarFallback>{getInitials(profile.full_name)}</AvatarFallback>
-                </Avatar>
-              </div>
-              
-              <Button 
-                variant="destructive" 
-                size="sm" 
-                onClick={handleSignOut}
-                className="shrink-0 font-medium"
-              >
-                <LogOut className="h-4 w-4" />
-                <span className="sm:inline ml-2">Logout</span>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Templates Content */}
+    <AppLayout title="Templates">
       <div className="container mx-auto px-4 py-4">
-        {/* Navigation */}
-        <div className="flex items-center gap-4 mb-6">
-          <Link to="/app">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Button>
-          </Link>
-          <div className="flex flex-wrap gap-2 p-4 bg-card rounded-lg border flex-1">
-            <Link to="/app/documents" className="flex-1 sm:flex-none">
-              <Button variant="outline" size="sm" className="w-full">
-                <FileText className="h-4 w-4 mr-2" />
-                My Documents
-              </Button>
-            </Link>
-            <Link to="/app/upload" className="flex-1 sm:flex-none">
-              <Button variant="outline" size="sm" className="w-full">
-                <Upload className="h-4 w-4 mr-2" />
-                Upload
-              </Button>
-            </Link>
-            <Link to="/app/settings" className="flex-1 sm:flex-none">
-              <Button variant="outline" size="sm" className="w-full">
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
-              </Button>
-            </Link>
-          </div>
-        </div>
 
         {/* Page Header */}
         <Card className="mb-6">
@@ -150,6 +77,6 @@ export default function Templates() {
         {/* Template Selector */}
         <TemplateSelector />
       </div>
-    </div>
+    </AppLayout>
   );
 }

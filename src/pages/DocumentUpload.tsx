@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import AppLayout from '@/components/AppLayout';
 import { encryptData, encryptFile, generateDocumentKey, hashKey } from '@/lib/encryption';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -312,16 +313,9 @@ export default function DocumentUpload() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="mb-6">
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/app')}
-          className="mb-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Dashboard
-        </Button>
+    <AppLayout title="Upload Document" showBackButton>
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="mb-6">
         
         <div className="flex items-center justify-between">
           <div>
@@ -617,6 +611,7 @@ export default function DocumentUpload() {
           </div>
         </form>
       </Form>
-    </div>
+      </div>
+    </AppLayout>
   );
 }

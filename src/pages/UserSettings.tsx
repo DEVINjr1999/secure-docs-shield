@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import AppLayout from '@/components/AppLayout';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -240,7 +241,8 @@ export default function UserSettings() {
   }
 
   return (
-    <div className="container mx-auto py-8 max-w-4xl">
+    <AppLayout title="Settings">
+      <div className="container mx-auto py-8 max-w-4xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Account Settings</h1>
         <p className="text-muted-foreground">Manage your profile and security settings</p>
@@ -537,6 +539,7 @@ export default function UserSettings() {
           </CardContent>
         </Card>
       </div>
-    </div>
+      </div>
+    </AppLayout>
   );
 }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import AppLayout from '@/components/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -145,7 +146,8 @@ export default function DocumentList() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <AppLayout title="Documents">
+      <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -345,6 +347,7 @@ export default function DocumentList() {
           </Table>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </AppLayout>
   );
 }

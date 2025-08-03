@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import AppLayout from '@/components/AppLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -322,17 +323,9 @@ export default function DocumentEditor() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <AppLayout title={documentId === 'new' ? 'Create Document' : (isRevision ? 'Submit New Version' : 'Edit Document')} showBackButton>
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-6">
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/app/documents')}
-          className="mb-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Documents
-        </Button>
-        
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">
@@ -569,6 +562,7 @@ export default function DocumentEditor() {
           </Card>
         </div>
       </div>
-    </div>
+      </div>
+    </AppLayout>
   );
 }
