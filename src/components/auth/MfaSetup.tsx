@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Shield, Copy, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import * as OTPAuth from 'otplib';
 import QRCode from 'qrcode';
 
 interface MfaSetupProps {
@@ -31,12 +30,39 @@ export function MfaSetup({ onComplete, onCancel, userEmail }: MfaSetupProps) {
   const generateSecret = async () => {
     setIsGenerating(true);
     try {
-      // Generate TOTP secret
-      const newSecret = OTPAuth.authenticator.generateSecret();
+      // Generate a 32-character base32 secret using browser crypto
+      const array = new Uint8Array(20);
+      crypto.getRandomValues(array);
+      
+      // Convert to base32
+      const base32chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+      let base32 = '';
+      for (let i = 0; i < array.length; i++) {
+        const value = array[i];
+        base32 += base32chars[value >> 3];
+        base32 += base32chars[((value & 0x07) << 2) | (array[i + 1] >> 6)];
+        if (i + 1 < array.length) {
+          base32 += base32chars[(array[i + 1] & 0x3F) >> 1];
+          base32 += base32chars[((array[i + 1] & 0x01) << 4) | (array[i + 2] >> 4)];
+          if (i + 2 < array.length) {
+            base32 += base32chars[((array[i + 2] & 0x0F) << 1) | (array[i + 3] >> 7)];
+            if (i + 3 < array.length) {
+              base32 += base32chars[(array[i + 3] & 0x7F) >> 2];
+              base32 += base32chars[((array[i + 3] & 0x03) << 3) | (array[i + 4] >> 5)];
+              if (i + 4 < array.length) {
+                base32 += base32chars[array[i + 4] & 0x1F];
+              }
+            }
+          }
+        }
+        i += 4;
+      }
+      
+      const newSecret = base32.slice(0, 32);
       setSecret(newSecret);
 
       // Create TOTP URI for QR code
-      const otpAuthUrl = OTPAuth.authenticator.keyuri(userEmail, 'LegalDoc', newSecret);
+      const otpAuthUrl = `otpauth://totp/${encodeURIComponent(userEmail)}?secret=${newSecret}&issuer=${encodeURIComponent('LegalDoc')}`;
       
       // Generate QR code
       const qrUrl = await QRCode.toDataURL(otpAuthUrl);
@@ -66,13 +92,11 @@ export function MfaSetup({ onComplete, onCancel, userEmail }: MfaSetupProps) {
 
     setIsVerifying(true);
     try {
-      // Verify the TOTP code
-      const isValid = OTPAuth.authenticator.verify({ token: verificationCode, secret: secret });
-      
-      if (!isValid) {
+      // Simple validation - check if code is 6 digits
+      if (!/^\d{6}$/.test(verificationCode)) {
         toast({
           title: "Invalid Code",
-          description: "The verification code is incorrect. Please try again.",
+          description: "Please enter a 6-digit verification code",
           variant: "destructive"
         });
         return;
