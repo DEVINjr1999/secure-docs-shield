@@ -17,12 +17,14 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      crypto: 'crypto-browserify',
+      stream: 'stream-browserify',
     },
   },
   define: {
     global: 'globalThis',
   },
   optimizeDeps: {
-    include: ['crypto-js', 'otplib'],
+    include: ['crypto-js', 'otplib', 'crypto-browserify', 'stream-browserify'],
   },
 }));
