@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Shield, Copy, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { authenticator } from 'otplib';
+import * as OTPAuth from 'otplib';
 import QRCode from 'qrcode';
 
 interface MfaSetupProps {
@@ -32,20 +32,21 @@ export function MfaSetup({ onComplete, onCancel, userEmail }: MfaSetupProps) {
     setIsGenerating(true);
     try {
       // Generate TOTP secret
-      const newSecret = authenticator.generateSecret();
+      const newSecret = OTPAuth.authenticator.generateSecret();
       setSecret(newSecret);
 
       // Create TOTP URI for QR code
-      const otpAuthUrl = authenticator.keyuri(userEmail, 'LegalDoc', newSecret);
+      const otpAuthUrl = OTPAuth.authenticator.keyuri(userEmail, 'LegalDoc', newSecret);
       
       // Generate QR code
       const qrUrl = await QRCode.toDataURL(otpAuthUrl);
       setQrCodeUrl(qrUrl);
       setStep('verify');
-    } catch (error) {
+    } catch (error: any) {
+      console.error('MFA Secret Generation Error:', error);
       toast({
         title: "Error",
-        description: "Failed to generate MFA secret",
+        description: error.message || "Failed to generate MFA secret",
         variant: "destructive"
       });
     } finally {
@@ -66,7 +67,7 @@ export function MfaSetup({ onComplete, onCancel, userEmail }: MfaSetupProps) {
     setIsVerifying(true);
     try {
       // Verify the TOTP code
-      const isValid = authenticator.verify({ token: verificationCode, secret: secret });
+      const isValid = OTPAuth.authenticator.verify({ token: verificationCode, secret: secret });
       
       if (!isValid) {
         toast({
