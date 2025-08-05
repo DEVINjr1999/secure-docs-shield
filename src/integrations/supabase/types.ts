@@ -173,6 +173,50 @@ export type Database = {
           },
         ]
       }
+      document_signatures: {
+        Row: {
+          created_at: string
+          document_id: string
+          id: string
+          signature_data: string
+          signature_method: string
+          signature_text: string | null
+          signature_type: string
+          signed_at: string
+          signer_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          id?: string
+          signature_data: string
+          signature_method: string
+          signature_text?: string | null
+          signature_type: string
+          signed_at?: string
+          signer_id: string
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          id?: string
+          signature_data?: string
+          signature_method?: string
+          signature_text?: string | null
+          signature_type?: string
+          signed_at?: string
+          signer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_signatures_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_templates: {
         Row: {
           created_at: string
