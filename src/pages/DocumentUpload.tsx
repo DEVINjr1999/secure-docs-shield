@@ -9,6 +9,7 @@ import { toast } from '@/hooks/use-toast';
 import AppLayout from '@/components/AppLayout';
 import { encryptData, encryptFile, generateDocumentKey, hashKey } from '@/lib/encryption';
 import { EncryptionKeyDisplay } from '@/components/EncryptionKeyDisplay';
+import { HelpTooltip, helpContent } from '@/components/HelpTooltip';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -509,7 +510,13 @@ export default function DocumentUpload() {
           {uploadType === 'file' && (
             <Card>
               <CardHeader>
-                <CardTitle>File Upload</CardTitle>
+                <div className="flex items-center gap-2">
+                  <CardTitle>File Upload</CardTitle>
+                  <HelpTooltip 
+                    content={helpContent.fileUpload}
+                    title="File Upload Guidelines"
+                  />
+                </div>
                 <CardDescription>
                   Select your document file (PDF, DOC, DOCX, TXT - Max 10MB)
                 </CardDescription>
@@ -561,7 +568,13 @@ export default function DocumentUpload() {
           {uploadType === 'template' && (
             <Card>
               <CardHeader>
-                <CardTitle>Select Template</CardTitle>
+                <div className="flex items-center gap-2">
+                  <CardTitle>Select Template</CardTitle>
+                  <HelpTooltip 
+                    content={helpContent.templateSelection}
+                    title="Template Selection Tips"
+                  />
+                </div>
                 <CardDescription>
                   Choose from available legal document templates
                 </CardDescription>
@@ -605,10 +618,14 @@ export default function DocumentUpload() {
           {/* Encryption Settings */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />
-                Encryption Settings
-              </CardTitle>
+                <CardTitle>Encryption Settings</CardTitle>
+                <HelpTooltip 
+                  content={helpContent.encryptionMode}
+                  title="Encryption Options"
+                />
+              </div>
               <CardDescription>
                 Choose how your document will be encrypted for security
               </CardDescription>
@@ -662,15 +679,21 @@ export default function DocumentUpload() {
                   control={form.control}
                   name="custom_encryption_key"
                   render={({ field }) => (
-                    <FormItem>
+                  <FormItem>
+                    <div className="flex items-center gap-2">
                       <FormLabel>Custom Encryption Key *</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="Enter your encryption key (min 10 chars, A-z, 0-9, special chars)"
-                          {...field}
-                        />
-                      </FormControl>
+                      <HelpTooltip 
+                        content={helpContent.customEncryptionKey}
+                        title="Strong Key Requirements"
+                      />
+                    </div>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder="Enter your encryption key (min 10 chars, A-z, 0-9, special chars)"
+                        {...field}
+                      />
+                    </FormControl>
                       <FormDescription>
                         <div className="space-y-1 text-xs">
                           <div>Requirements for your encryption key:</div>
@@ -705,7 +728,13 @@ export default function DocumentUpload() {
                 name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Title *</FormLabel>
+                    <div className="flex items-center gap-2">
+                      <FormLabel>Title *</FormLabel>
+                      <HelpTooltip 
+                        content={helpContent.documentTitle}
+                        title="Document Title Tips"
+                      />
+                    </div>
                     <FormControl>
                       <Input placeholder="Enter document title" {...field} />
                     </FormControl>
@@ -719,7 +748,13 @@ export default function DocumentUpload() {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description</FormLabel>
+                    <div className="flex items-center gap-2">
+                      <FormLabel>Description</FormLabel>
+                      <HelpTooltip 
+                        content={helpContent.documentDescription}
+                        title="Description Guidelines"
+                      />
+                    </div>
                     <FormControl>
                       <Textarea 
                         placeholder="Brief description of the document"
@@ -737,7 +772,13 @@ export default function DocumentUpload() {
                   name="document_type"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Document Type *</FormLabel>
+                      <div className="flex items-center gap-2">
+                        <FormLabel>Document Type *</FormLabel>
+                        <HelpTooltip 
+                          content={helpContent.documentType}
+                          title="Choose the Right Type"
+                        />
+                      </div>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -767,7 +808,13 @@ export default function DocumentUpload() {
                   name="jurisdiction"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Jurisdiction</FormLabel>
+                      <div className="flex items-center gap-2">
+                        <FormLabel>Jurisdiction</FormLabel>
+                        <HelpTooltip 
+                          content={helpContent.jurisdiction}
+                          title="Legal Jurisdiction"
+                        />
+                      </div>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>

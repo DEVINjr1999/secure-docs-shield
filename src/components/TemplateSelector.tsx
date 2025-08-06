@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { HelpTooltip, helpContent } from '@/components/HelpTooltip';
 import { FileText, ArrowRight, Loader2, Upload, RefreshCw } from 'lucide-react';
 
 interface Template {
@@ -129,9 +130,16 @@ export default function TemplateSelector() {
           <Card key={template.id} className="flex flex-col h-full hover:shadow-md transition-shadow">
             <CardHeader className="flex-shrink-0">
               <div className="flex items-start justify-between gap-2">
-                <CardTitle className="text-base sm:text-lg line-clamp-2">
-                  {template.name}
-                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base sm:text-lg line-clamp-2">
+                    {template.name}
+                  </CardTitle>
+                  <HelpTooltip 
+                    content={helpContent.templateSelection}
+                    title="Template Selection Tips"
+                    triggerClassName="flex-shrink-0"
+                  />
+                </div>
                 <div className="flex flex-col gap-1 flex-shrink-0">
                   <Badge variant="secondary" className="text-xs">
                     {formatDocumentType(template.document_type)}
@@ -164,14 +172,20 @@ export default function TemplateSelector() {
       {/* Custom Upload Section */}
       <Card className="border-dashed">
         <CardContent className="pt-6">
-          <div className="text-center space-y-4">
-            <Upload className="h-8 w-8 text-muted-foreground mx-auto" />
-            <div>
-              <h3 className="font-medium">Need something custom?</h3>
-              <p className="text-sm text-muted-foreground">
-                Upload your own document for review and processing
-              </p>
-            </div>
+      <div className="text-center space-y-4">
+        <Upload className="h-8 w-8 text-muted-foreground mx-auto" />
+        <div>
+          <div className="flex items-center justify-center gap-2">
+            <h3 className="font-medium">Need something custom?</h3>
+            <HelpTooltip 
+              content={helpContent.fileUpload}
+              title="File Upload Guidelines"
+            />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Upload your own document for review and processing
+          </p>
+        </div>
             <Button 
               variant="outline" 
               onClick={() => navigate('/app/upload')}

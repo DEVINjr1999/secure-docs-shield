@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { TemplateFieldRenderer } from "./TemplateFieldRenderer";
+import { HelpTooltip, helpContent } from "@/components/HelpTooltip";
 import { Users, Building, FileText, Settings, Calendar, DollarSign } from "lucide-react";
 
 interface TemplateField {
@@ -53,6 +54,16 @@ const getGroupIcon = (groupName: string) => {
   return iconMap[groupName.toLowerCase()] || <FileText className="h-5 w-5" />;
 };
 
+const getGroupHelpContent = (groupName: string) => {
+  switch (groupName.toLowerCase()) {
+    case 'personal': return helpContent.personalInfo;
+    case 'company': return helpContent.companyInfo;
+    case 'financial': return helpContent.financialInfo;
+    case 'dates': return helpContent.dateFields;
+    default: return "Fill in all required fields in this section to complete your document.";
+  }
+};
+
 export const TemplateFieldGroup: React.FC<TemplateFieldGroupProps> = ({ 
   group, 
   form, 
@@ -93,11 +104,18 @@ export const TemplateFieldGroup: React.FC<TemplateFieldGroupProps> = ({
             <div className="p-2 rounded-lg bg-primary/10 text-primary">
               {getGroupIcon(group.name)}
             </div>
-            <div>
-              <CardTitle className="text-lg">{group.title}</CardTitle>
-              <CardDescription className="text-sm mt-1">
-                {group.description}
-              </CardDescription>
+            <div className="flex items-center gap-2">
+              <div>
+                <CardTitle className="text-lg">{group.title}</CardTitle>
+                <CardDescription className="text-sm mt-1">
+                  {group.description}
+                </CardDescription>
+              </div>
+              <HelpTooltip 
+                content={getGroupHelpContent(group.name)}
+                title={`${group.title} Tips`}
+                triggerClassName="text-muted-foreground/70 hover:text-muted-foreground"
+              />
             </div>
           </div>
           

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { HelpTooltip } from '@/components/HelpTooltip';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -198,7 +199,24 @@ export function ESignature({ documentId, documentTitle, onSignatureComplete }: E
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Electronic Signature</DialogTitle>
+          <div className="flex items-center gap-2">
+            <DialogTitle>Electronic Signature</DialogTitle>
+            <HelpTooltip 
+              content={
+                <div className="space-y-2">
+                  <div className="font-medium">E-Signature Guidelines:</div>
+                  <ul className="text-xs space-y-1">
+                    <li>• <strong>Draw:</strong> Use your mouse or touch screen to draw your signature</li>
+                    <li>• <strong>Type:</strong> Enter your full legal name in a signature font</li>
+                    <li>• Both methods are legally binding</li>
+                    <li>• Your signature will be securely attached to this document</li>
+                    <li>• You can clear and redo your signature anytime</li>
+                  </ul>
+                </div>
+              }
+              title="E-Signature Help"
+            />
+          </div>
           <DialogDescription>
             Sign the document "{documentTitle}" electronically
           </DialogDescription>
@@ -228,7 +246,13 @@ export function ESignature({ documentId, documentTitle, onSignatureComplete }: E
           {/* Typed Signature Input */}
           {signatureMode === 'type' && (
             <div className="space-y-2">
-              <Label htmlFor="typed-signature">Type your full name</Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="typed-signature">Type your full name</Label>
+                <HelpTooltip 
+                  content="Enter your complete legal name exactly as it appears on official documents. This will be formatted as your signature."
+                  triggerClassName="text-muted-foreground/70"
+                />
+              </div>
               <Input
                 id="typed-signature"
                 value={typedSignature}
