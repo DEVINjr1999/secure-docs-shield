@@ -22,54 +22,37 @@ export function MfaVerification({ onSuccess, onCancel, userEmail }: MfaVerificat
   const { toast } = useToast();
 
   const handleVerification = async () => {
-    if (!verificationCode || (useBackupCode ? verificationCode.length !== 8 : verificationCode.length !== 6)) {
-      toast({
-        title: "Invalid Code",
-        description: useBackupCode ? "Please enter an 8-character backup code" : "Please enter a 6-digit verification code",
-        variant: "destructive"
-      });
-      return;
-    }
+    if (!verificationCode) return;
 
     setIsVerifying(true);
     try {
-      const { data, error } = await supabase.rpc('verify_mfa_code', {
-        p_code: verificationCode,
-        p_is_backup_code: useBackupCode
-      });
-
-      if (error) throw error;
-
-      const response = data as { success: boolean; error?: string };
-
-      if (!response.success) {
-        setAttemptsLeft(prev => prev - 1);
-        
-        if (attemptsLeft <= 1) {
-          toast({
-            title: "Too Many Attempts",
-            description: "Account temporarily locked. Please try again later.",
-            variant: "destructive"
-          });
-          onCancel();
-          return;
-        }
-
-        toast({
-          title: "Invalid Code",
-          description: `${response.error}. ${attemptsLeft - 1} attempts remaining.`,
-          variant: "destructive"
-        });
-        return;
+      // Get the user's MFA factors
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const totpFactor = factors?.totp?.[0];
+      
+      if (!totpFactor) {
+        throw new Error('No MFA factor found');
       }
 
-      toast({
-        title: "Verification Successful",
-        description: "You have been successfully authenticated",
+      // Create a challenge
+      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+        factorId: totpFactor.id
       });
-      
+
+      if (challengeError) throw challengeError;
+
+      // Verify the code
+      const { data: verifyData, error: verifyError } = await supabase.auth.mfa.verify({
+        factorId: totpFactor.id,
+        challengeId: challengeData.id,
+        code: verificationCode
+      });
+
+      if (verifyError) throw verifyError;
+
       onSuccess();
     } catch (error: any) {
+      setAttemptsLeft(prev => prev - 1);
       toast({
         title: "Verification Failed",
         description: error.message || "Failed to verify code",
@@ -77,7 +60,6 @@ export function MfaVerification({ onSuccess, onCancel, userEmail }: MfaVerificat
       });
     } finally {
       setIsVerifying(false);
-      setVerificationCode('');
     }
   };
 
@@ -109,43 +91,23 @@ export function MfaVerification({ onSuccess, onCancel, userEmail }: MfaVerificat
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="verification-code">
-            {useBackupCode ? 'Backup Code' : 'Verification Code'}
-          </Label>
+          <Label htmlFor="verification-code">Verification Code</Label>
           <Input
             id="verification-code"
-            placeholder={useBackupCode ? "Enter 8-character backup code" : "Enter 6-digit code"}
+            placeholder="Enter 6-digit code"
             value={verificationCode}
-            onChange={(e) => {
-              const value = useBackupCode 
-                ? e.target.value.toLowerCase().slice(0, 8)
-                : e.target.value.replace(/\D/g, '').slice(0, 6);
-              setVerificationCode(value);
-            }}
+            onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
             onKeyPress={handleKeyPress}
-            maxLength={useBackupCode ? 8 : 6}
+            maxLength={6}
             className="text-center text-lg tracking-widest font-mono"
             autoComplete="off"
           />
         </div>
 
-        <div className="flex items-center justify-center">
-          <Button
-            variant="link"
-            onClick={() => {
-              setUseBackupCode(!useBackupCode);
-              setVerificationCode('');
-            }}
-            className="text-sm"
-          >
-            {useBackupCode ? 'Use authenticator code instead' : 'Use backup code instead'}
-          </Button>
-        </div>
-
         <div className="flex gap-2">
           <Button 
             onClick={handleVerification} 
-            disabled={isVerifying || verificationCode.length < (useBackupCode ? 8 : 6)}
+            disabled={isVerifying || verificationCode.length !== 6}
             className="flex-1"
           >
             {isVerifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

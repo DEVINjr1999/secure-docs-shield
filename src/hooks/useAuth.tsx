@@ -171,9 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       last_failed_login_at: null,
       timezone: 'UTC',
       failed_login_attempts: 0,
-      mfa_verified_at: null,
-      mfa_secret: null,
-      mfa_backup_codes: null
+      mfa_verified_at: null
     };
     
     console.log('fetchProfile: Using fallback profile');
@@ -610,20 +608,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const verifyMfa = async (code: string, isBackupCode: boolean = false) => {
     try {
-      const { data, error } = await supabase.rpc('verify_mfa_code', {
-        p_code: code,
-        p_is_backup_code: isBackupCode
-      });
-
-      if (error) throw error;
-
-      const response = data as { success: boolean; error?: string };
-
-      if (!response.success) {
-        await logAuditEvent('mfa_verification_failed', 'mfa', false, response.error);
-        return { error: { message: response.error || 'MFA verification failed' } };
+      // Get the user's MFA factors
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const totpFactor = factors?.totp?.[0];
+      
+      if (!totpFactor) {
+        throw new Error('No MFA factor found');
       }
 
+      // Create a challenge
+      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+        factorId: totpFactor.id
+      });
+
+      if (challengeError) throw challengeError;
+
+      // Verify the code
+      const { data: verifyData, error: verifyError } = await supabase.auth.mfa.verify({
+        factorId: totpFactor.id,
+        challengeId: challengeData.id,
+        code: code
+      });
+
+      if (verifyError) throw verifyError;
+
+      // MFA verification successful
       await logAuditEvent('mfa_verification_success', 'mfa', true);
       return { error: null };
     } catch (error: any) {

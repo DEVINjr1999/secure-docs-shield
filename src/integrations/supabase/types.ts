@@ -389,10 +389,8 @@ export type Database = {
           last_failed_login_at: string | null
           last_login_at: string | null
           locale: string | null
-          mfa_backup_codes: Json | null
           mfa_enabled: boolean | null
           mfa_method: string | null
-          mfa_secret: string | null
           mfa_verified_at: string | null
           phone: string | null
           privacy_consent_at: string | null
@@ -421,10 +419,8 @@ export type Database = {
           last_failed_login_at?: string | null
           last_login_at?: string | null
           locale?: string | null
-          mfa_backup_codes?: Json | null
           mfa_enabled?: boolean | null
           mfa_method?: string | null
-          mfa_secret?: string | null
           mfa_verified_at?: string | null
           phone?: string | null
           privacy_consent_at?: string | null
@@ -453,10 +449,8 @@ export type Database = {
           last_failed_login_at?: string | null
           last_login_at?: string | null
           locale?: string | null
-          mfa_backup_codes?: Json | null
           mfa_enabled?: boolean | null
           mfa_method?: string | null
-          mfa_secret?: string | null
           mfa_verified_at?: string | null
           phone?: string | null
           privacy_consent_at?: string | null
@@ -519,17 +513,9 @@ export type Database = {
         Args: { p_document_id: string }
         Returns: string
       }
-      disable_mfa: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
       generate_secure_encryption_key: {
         Args: { p_document_id: string }
         Returns: Json
-      }
-      get_mfa_secret: {
-        Args: Record<PropertyKey, never>
-        Returns: string
       }
       get_user_profile: {
         Args: { p_user_id: string }
@@ -605,14 +591,6 @@ export type Database = {
       reset_failed_login_attempts: {
         Args: { p_user_id: string }
         Returns: undefined
-      }
-      setup_mfa: {
-        Args: { p_secret: string }
-        Returns: Json
-      }
-      verify_mfa_code: {
-        Args: { p_code: string; p_is_backup_code?: boolean }
-        Returns: Json
       }
     }
     Enums: {

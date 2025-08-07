@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -15,23 +14,45 @@ export function MfaSettings() {
   const [isLoading, setIsLoading] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [isMfaEnabled, setIsMfaEnabled] = useState(false);
   const { toast } = useToast();
 
-  const isMfaEnabled = profile?.mfa_enabled || false;
+  useEffect(() => {
+    checkMfaStatus();
+  }, [user]);
+
+  const checkMfaStatus = async () => {
+    if (!user) return;
+    
+    try {
+      const { data } = await supabase.auth.mfa.listFactors();
+      const hasTotp = data?.totp?.length > 0;
+      setIsMfaEnabled(hasTotp);
+    } catch (error) {
+      console.error('Error checking MFA status:', error);
+    }
+  };
 
   const handleDisableMfa = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.rpc('disable_mfa');
-
-      if (error) throw error;
-
-      const response = data as { success: boolean; error?: string };
-
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to disable MFA');
+      // Get current factors
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      
+      if (factors?.totp?.length > 0) {
+        // Unenroll each TOTP factor
+        for (const factor of factors.totp) {
+          await supabase.auth.mfa.unenroll({ factorId: factor.id });
+        }
       }
 
+      // Update profile to mark MFA as disabled
+      await supabase
+        .from('profiles')
+        .update({ mfa_enabled: false })
+        .eq('user_id', user?.id);
+
+      setIsMfaEnabled(false);
       await refreshProfile();
       toast({
         title: "MFA Disabled",
@@ -51,7 +72,9 @@ export function MfaSettings() {
   const handleMfaSetupComplete = async (codes: string[]) => {
     setBackupCodes(codes);
     setShowSetup(false);
+    setIsMfaEnabled(true);
     await refreshProfile();
+    await checkMfaStatus();
   };
 
   if (!user || !profile) {
