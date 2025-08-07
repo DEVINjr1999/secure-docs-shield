@@ -302,6 +302,39 @@ export default function DocumentUpload() {
   const onSubmit = async (data: UploadFormData) => {
     if (!user) return;
 
+    // Ensure user has a profile record
+    try {
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!existingProfile) {
+        // Create profile if it doesn't exist
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: user.id,
+            full_name: user.email || 'User',
+            role: 'client',
+            account_status: 'active'
+          });
+
+        if (profileError) {
+          console.error('Failed to create profile:', profileError);
+          toast({
+            title: 'Profile Error',
+            description: 'Failed to create user profile. Please try again.',
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Profile check error:', error);
+    }
+
     // Validate required data
     if (uploadType === 'file' && !selectedFile) {
       toast({
