@@ -608,34 +608,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const verifyMfa = async (code: string, isBackupCode: boolean = false) => {
     try {
-      // Get the user's MFA factors
-      const { data: factors } = await supabase.auth.mfa.listFactors();
-      const totpFactor = factors?.totp?.[0];
+      console.log('Auth Hook: Starting MFA verification');
       
-      if (!totpFactor) {
-        throw new Error('No MFA factor found');
+      // Get the user's MFA factors
+      const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
+      console.log('Auth Hook: Factors response:', { factors, factorsError });
+      
+      if (factorsError) {
+        console.error('Auth Hook: Error getting factors:', factorsError);
+        throw factorsError;
+      }
+      
+      const totpFactor = factors?.totp?.[0];
+      console.log('Auth Hook: TOTP factor:', totpFactor);
+      
+      if (!totpFactor || !totpFactor.id) {
+        console.error('Auth Hook: No valid TOTP factor found');
+        throw new Error('No MFA factor found. Please set up 2FA first.');
       }
 
       // Create a challenge
+      console.log('Auth Hook: Creating challenge for factor:', totpFactor.id);
       const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
         factorId: totpFactor.id
       });
 
-      if (challengeError) throw challengeError;
+      console.log('Auth Hook: Challenge response:', { challengeData, challengeError });
+      
+      if (challengeError) {
+        console.error('Auth Hook: Challenge error:', challengeError);
+        throw challengeError;
+      }
+
+      if (!challengeData || !challengeData.id) {
+        console.error('Auth Hook: Invalid challenge data:', challengeData);
+        throw new Error('Failed to create authentication challenge. Please try again.');
+      }
+
+      console.log('Auth Hook: Challenge created successfully, ID:', challengeData.id);
 
       // Verify the code
+      console.log('Auth Hook: Verifying code with challenge ID:', challengeData.id);
       const { data: verifyData, error: verifyError } = await supabase.auth.mfa.verify({
         factorId: totpFactor.id,
         challengeId: challengeData.id,
         code: code
       });
 
-      if (verifyError) throw verifyError;
+      console.log('Auth Hook: Verify response:', { verifyData, verifyError });
+
+      if (verifyError) {
+        console.error('Auth Hook: Verify error:', verifyError);
+        throw verifyError;
+      }
+
+      console.log('Auth Hook: MFA verification successful');
 
       // MFA verification successful
       await logAuditEvent('mfa_verification_success', 'mfa', true);
       return { error: null };
     } catch (error: any) {
+      console.error('Auth Hook: MFA verification failed:', error);
       await logAuditEvent('mfa_verification_error', 'mfa', false, error.message);
       return { error };
     }

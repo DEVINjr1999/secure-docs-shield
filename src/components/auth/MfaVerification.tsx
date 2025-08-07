@@ -26,36 +26,80 @@ export function MfaVerification({ onSuccess, onCancel, userEmail }: MfaVerificat
 
     setIsVerifying(true);
     try {
-      // Get the user's MFA factors
-      const { data: factors } = await supabase.auth.mfa.listFactors();
-      const totpFactor = factors?.totp?.[0];
+      console.log('MFA Verification: Starting verification process');
       
-      if (!totpFactor) {
-        throw new Error('No MFA factor found');
+      // Get the user's MFA factors
+      const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
+      console.log('MFA Verification: Factors response:', { factors, factorsError });
+      
+      if (factorsError) {
+        console.error('MFA Verification: Error getting factors:', factorsError);
+        throw factorsError;
+      }
+      
+      const totpFactor = factors?.totp?.[0];
+      console.log('MFA Verification: TOTP factor:', totpFactor);
+      
+      if (!totpFactor || !totpFactor.id) {
+        console.error('MFA Verification: No valid TOTP factor found');
+        throw new Error('No MFA factor found. Please set up 2FA first.');
       }
 
       // Create a challenge
+      console.log('MFA Verification: Creating challenge for factor:', totpFactor.id);
       const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
         factorId: totpFactor.id
       });
 
-      if (challengeError) throw challengeError;
+      console.log('MFA Verification: Challenge response:', { challengeData, challengeError });
+      
+      if (challengeError) {
+        console.error('MFA Verification: Challenge error:', challengeError);
+        throw challengeError;
+      }
+
+      if (!challengeData || !challengeData.id) {
+        console.error('MFA Verification: Invalid challenge data:', challengeData);
+        throw new Error('Failed to create authentication challenge. Please try again.');
+      }
+
+      console.log('MFA Verification: Challenge created successfully, ID:', challengeData.id);
 
       // Verify the code
+      console.log('MFA Verification: Verifying code with challenge ID:', challengeData.id);
       const { data: verifyData, error: verifyError } = await supabase.auth.mfa.verify({
         factorId: totpFactor.id,
         challengeId: challengeData.id,
         code: verificationCode
       });
 
-      if (verifyError) throw verifyError;
+      console.log('MFA Verification: Verify response:', { verifyData, verifyError });
 
+      if (verifyError) {
+        console.error('MFA Verification: Verify error:', verifyError);
+        throw verifyError;
+      }
+
+      console.log('MFA Verification: Success!');
       onSuccess();
     } catch (error: any) {
+      console.error('MFA Verification: Full error:', error);
       setAttemptsLeft(prev => prev - 1);
+      
+      let errorMessage = error.message || "Failed to verify code";
+      
+      // Provide better error messages for common issues
+      if (errorMessage.includes('uuid: incorrect UUID length')) {
+        errorMessage = "Authentication challenge failed. Please try again or contact support if this persists.";
+      } else if (errorMessage.includes('Invalid TOTP code')) {
+        errorMessage = "Invalid authentication code. Please check your authenticator app and try again.";
+      } else if (errorMessage.includes('No MFA factor found')) {
+        errorMessage = "Two-factor authentication is not set up. Please set up 2FA first.";
+      }
+      
       toast({
         title: "Verification Failed",
-        description: error.message || "Failed to verify code",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
