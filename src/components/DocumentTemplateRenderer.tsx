@@ -1,39 +1,15 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import React from 'react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
-import { 
-  FileText, 
-  Calendar, 
-  Building, 
-  User, 
-  DollarSign, 
-  Percent,
-  Phone,
-  Mail,
-  MapPin,
-  Printer
-} from 'lucide-react';
-import { formatDate } from 'date-fns';
-import PrintStyles from '@/components/PrintStyles';
+import { Printer } from 'lucide-react';
 
 interface TemplateField {
-  name: string;
-  label: string;
+  id: string;
   type: string;
-  options?: string[];
-  description?: string;
-}
-
-interface FieldGroup {
-  name: string;
-  title: string;
-  description?: string;
-  icon?: string;
-  fields: TemplateField[];
+  label: string;
+  value?: any;
+  required?: boolean;
 }
 
 interface DocumentTemplateRendererProps {
@@ -42,19 +18,17 @@ interface DocumentTemplateRendererProps {
   documentId: string;
   createdAt: string;
   status: string;
+  className?: string;
 }
 
-export function DocumentTemplateRenderer({ 
-  templateData, 
-  documentTitle, 
+export function DocumentTemplateRenderer({
+  templateData,
+  documentTitle,
   documentId,
   createdAt,
-  status 
+  status,
+  className,
 }: DocumentTemplateRendererProps) {
-  const [template, setTemplate] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
-
   let parsedData;
   try {
     parsedData = typeof templateData === 'string' ? JSON.parse(templateData) : templateData;
@@ -63,75 +37,424 @@ export function DocumentTemplateRenderer({
     parsedData = {};
   }
 
-  useEffect(() => {
-    loadTemplate();
-  }, []);
+  const formData = parsedData.formData || parsedData;
 
-  const loadTemplate = async () => {
-    // Check if we have templateId in the data
-    if (parsedData.templateId) {
-      try {
-        const { data, error } = await supabase
-          .from('document_templates')
-          .select('*')
-          .eq('id', parsedData.templateId)
-          .single();
-
-        if (!error && data) {
-          setTemplate(data);
-        }
-      } catch (error) {
-        console.error('Error loading template:', error);
-      }
-    }
-    // Always set loading to false, even without template
-    setLoading(false);
-  };
-
-  const getFieldIcon = (type: string, name: string) => {
-    const lowerName = name.toLowerCase();
-    
-    if (lowerName.includes('email')) return <Mail className="h-4 w-4" />;
-    if (lowerName.includes('phone')) return <Phone className="h-4 w-4" />;
-    if (lowerName.includes('address') || lowerName.includes('location')) return <MapPin className="h-4 w-4" />;
-    if (lowerName.includes('company') || lowerName.includes('business')) return <Building className="h-4 w-4" />;
-    if (lowerName.includes('date') || type === 'date') return <Calendar className="h-4 w-4" />;
-    if (type === 'currency' || lowerName.includes('amount') || lowerName.includes('price')) return <DollarSign className="h-4 w-4" />;
-    if (type === 'percentage') return <Percent className="h-4 w-4" />;
-    
-    return <User className="h-4 w-4" />;
-  };
-
-  const formatFieldValue = (field: TemplateField, value: any) => {
-    if (!value) return 'Not provided';
-
-    switch (field.type) {
-      case 'date':
-        try {
-          return formatDate(new Date(value), 'MMMM d, yyyy');
-        } catch {
-          return value;
-        }
-      case 'currency':
-        return `$${parseFloat(value).toLocaleString('en-AU', { minimumFractionDigits: 2 })}`;
-      case 'percentage':
-        return `${value}%`;
-      case 'multiselect':
-        return Array.isArray(value) ? value.join(', ') : value;
-      case 'select':
-        return value;
-      default:
-        return value;
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '______';
+    try {
+      return format(new Date(dateString), 'MMMM do, yyyy');
+    } catch {
+      return dateString;
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'approved': return 'bg-green-100 text-green-800 border-green-200';
-      case 'rejected': return 'bg-red-100 text-red-800 border-red-200';
-      case 'under_review': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'submitted': return 'bg-blue-100 text-blue-800 border-blue-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+  const formatCurrency = (amount: string | number) => {
+    if (!amount) return '$______';
+    const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(numAmount);
+  };
+
+  const getTemplateName = () => {
+    return documentTitle.toLowerCase().replace(/\s+/g, '_');
+  };
+
+  const renderLoanAgreement = () => (
+    <div className="document-content">
+      <div className="document-header">
+        <h1 className="document-title">LOAN AGREEMENT</h1>
+      </div>
+
+      <div className="document-body">
+        <p className="document-opening">
+          THIS LOAN AGREEMENT (this "Agreement") dated this{' '}
+          <span className="underline-field">
+            {formData.agreement_date ? format(new Date(formData.agreement_date), 'do') : '______'}
+          </span>{' '}
+          day of{' '}
+          <span className="underline-field">
+            {formData.agreement_date ? format(new Date(formData.agreement_date), 'MMMM') : '______'}
+          </span>,{' '}
+          <span className="underline-field">
+            {formData.agreement_date ? format(new Date(formData.agreement_date), 'yyyy') : '______'}
+          </span>
+        </p>
+
+        <div className="parties-section">
+          <p className="section-header">BETWEEN:</p>
+          
+          <div className="party-block">
+            <div className="party-line">
+              <span className="underline-field lender-name">
+                {formData.lender_name || formData.lenderName || '________________________'}
+              </span>{' '}
+              of{' '}
+              <span className="underline-field lender-address">
+                {formData.lender_address || formData.lenderAddress || '________________________'}
+              </span>
+            </div>
+            <div className="party-designation">(the "Lender")</div>
+            <div className="party-position">OF THE FIRST PART</div>
+          </div>
+
+          <div className="and-divider">AND</div>
+
+          <div className="party-block">
+            <div className="party-line">
+              <span className="underline-field borrower-name">
+                {formData.borrower_name || formData.borrowerName || '________________________'}
+              </span>{' '}
+              of{' '}
+              <span className="underline-field borrower-address">
+                {formData.borrower_address || formData.borrowerAddress || '________________________'}
+              </span>
+            </div>
+            <div className="party-designation">(the "Borrower")</div>
+            <div className="party-position">OF THE SECOND PART</div>
+          </div>
+        </div>
+
+        <div className="consideration-section">
+          <p className="consideration-text">
+            IN CONSIDERATION OF the Lender loaning certain monies (the "Loan") to the Borrower, and the Borrower repaying the Loan to 
+            the Lender, the parties agree to keep, perform and fulfill the promises and conditions set out in this Agreement:
+          </p>
+        </div>
+
+        <div className="terms-section">
+          <h3 className="section-title">Loan Amount & Interest</h3>
+          
+          <div className="numbered-clause">
+            <span className="clause-number">1.</span>
+            <span className="clause-text">
+              The Lender promises to loan{' '}
+              <span className="underline-field">
+                {formatCurrency(formData.loan_amount || formData.loanAmount)}
+              </span>{' '}
+              AUD to the Borrower and the Borrower promises to repay this principal amount, with interest, to the Lender.
+            </span>
+          </div>
+
+          <div className="numbered-clause">
+            <span className="clause-number">2.</span>
+            <span className="clause-text">
+              Interest will be charged on the outstanding principal at the rate of{' '}
+              <span className="underline-field">
+                {formData.interest_rate || formData.interestRate || '______'}%
+              </span>{' '}
+              per annum, calculated{' '}
+              <span className="underline-field">
+                {formData.interest_calculation || formData.interestCalculation || 'monthly'}
+              </span>.
+            </span>
+          </div>
+
+          <div className="numbered-clause">
+            <span className="clause-number">3.</span>
+            <span className="clause-text">
+              The loan and accrued interest will be repaid in full by{' '}
+              <span className="underline-field">
+                {formatDate(formData.repayment_date || formData.repaymentDate)}
+              </span>.
+            </span>
+          </div>
+
+          {(formData.payment_schedule || formData.paymentSchedule) && (
+            <div className="numbered-clause">
+              <span className="clause-number">4.</span>
+              <span className="clause-text">
+                Payment Schedule: {formData.payment_schedule || formData.paymentSchedule}
+              </span>
+            </div>
+          )}
+
+          {(formData.security_collateral || formData.securityCollateral) && (
+            <div className="numbered-clause">
+              <span className="clause-number">5.</span>
+              <span className="clause-text">
+                Security/Collateral: {formData.security_collateral || formData.securityCollateral}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="signature-section">
+          <div className="signature-block">
+            <div className="signature-line">
+              <div className="signature-field">
+                ________________________________
+              </div>
+              <div className="signature-label">Lender Signature</div>
+              <div className="signature-date">
+                Date: {formatDate(formData.signature_date || formData.signatureDate)}
+              </div>
+            </div>
+          </div>
+
+          <div className="signature-block">
+            <div className="signature-line">
+              <div className="signature-field">
+                ________________________________
+              </div>
+              <div className="signature-label">Borrower Signature</div>
+              <div className="signature-date">
+                Date: {formatDate(formData.signature_date || formData.signatureDate)}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderServiceAgreement = () => (
+    <div className="document-content">
+      <div className="document-header">
+        <h1 className="document-title">SERVICE AGREEMENT</h1>
+      </div>
+
+      <div className="document-body">
+        <p className="document-opening">
+          THIS SERVICE AGREEMENT (this "Agreement") is entered into on{' '}
+          <span className="underline-field">
+            {formatDate(formData.agreement_date || formData.agreementDate)}
+          </span>{' '}
+          between:
+        </p>
+
+        <div className="parties-section">
+          <div className="party-block">
+            <div className="party-line">
+              <strong>Service Provider:</strong>{' '}
+              <span className="underline-field">
+                {formData.provider_name || formData.providerName || '________________________'}
+              </span>
+            </div>
+            <div className="party-address">
+              Address: <span className="underline-field">
+                {formData.provider_address || formData.providerAddress || '________________________'}
+              </span>
+            </div>
+          </div>
+
+          <div className="party-block">
+            <div className="party-line">
+              <strong>Client:</strong>{' '}
+              <span className="underline-field">
+                {formData.client_name || formData.clientName || '________________________'}
+              </span>
+            </div>
+            <div className="party-address">
+              Address: <span className="underline-field">
+                {formData.client_address || formData.clientAddress || '________________________'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="terms-section">
+          <h3 className="section-title">Terms and Conditions</h3>
+          
+          <div className="numbered-clause">
+            <span className="clause-number">1.</span>
+            <span className="clause-text">
+              <strong>Services:</strong> The Service Provider agrees to provide the following services:{' '}
+              <span className="underline-field">
+                {formData.service_description || formData.serviceDescription || '________________________'}
+              </span>
+            </span>
+          </div>
+
+          <div className="numbered-clause">
+            <span className="clause-number">2.</span>
+            <span className="clause-text">
+              <strong>Compensation:</strong> The Client agrees to pay{' '}
+              <span className="underline-field">
+                {formatCurrency(formData.service_fee || formData.serviceFee)}
+              </span>{' '}
+              for the services provided.
+            </span>
+          </div>
+
+          <div className="numbered-clause">
+            <span className="clause-number">3.</span>
+            <span className="clause-text">
+              <strong>Term:</strong> This agreement shall commence on{' '}
+              <span className="underline-field">
+                {formatDate(formData.start_date || formData.startDate)}
+              </span>{' '}
+              and shall terminate on{' '}
+              <span className="underline-field">
+                {formatDate(formData.end_date || formData.endDate)}
+              </span>.
+            </span>
+          </div>
+        </div>
+
+        <div className="signature-section">
+          <div className="signature-block">
+            <div className="signature-line">
+              <div className="signature-field">
+                ________________________________
+              </div>
+              <div className="signature-label">Service Provider Signature</div>
+            </div>
+          </div>
+
+          <div className="signature-block">
+            <div className="signature-line">
+              <div className="signature-field">
+                ________________________________
+              </div>
+              <div className="signature-label">Client Signature</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderEmploymentContract = () => (
+    <div className="document-content">
+      <div className="document-header">
+        <h1 className="document-title">EMPLOYMENT CONTRACT</h1>
+      </div>
+
+      <div className="document-body">
+        <p className="document-opening">
+          THIS EMPLOYMENT CONTRACT is made between{' '}
+          <span className="underline-field">
+            {formData.company_name || formData.companyName || '________________________'}
+          </span>{' '}
+          ("Company") and{' '}
+          <span className="underline-field">
+            {formData.employee_name || formData.employeeName || '________________________'}
+          </span>{' '}
+          ("Employee").
+        </p>
+
+        <div className="terms-section">
+          <div className="numbered-clause">
+            <span className="clause-number">1.</span>
+            <span className="clause-text">
+              <strong>Position:</strong> Employee is hired as{' '}
+              <span className="underline-field">
+                {formData.job_title || formData.jobTitle || '________________________'}
+              </span>
+            </span>
+          </div>
+
+          <div className="numbered-clause">
+            <span className="clause-number">2.</span>
+            <span className="clause-text">
+              <strong>Salary:</strong> Employee will receive an annual salary of{' '}
+              <span className="underline-field">
+                {formatCurrency(formData.annual_salary || formData.annualSalary)}
+              </span>
+            </span>
+          </div>
+
+          <div className="numbered-clause">
+            <span className="clause-number">3.</span>
+            <span className="clause-text">
+              <strong>Start Date:</strong> Employment begins on{' '}
+              <span className="underline-field">
+                {formatDate(formData.start_date || formData.startDate)}
+              </span>
+            </span>
+          </div>
+
+          <div className="numbered-clause">
+            <span className="clause-number">4.</span>
+            <span className="clause-text">
+              <strong>Work Schedule:</strong>{' '}
+              <span className="underline-field">
+                {formData.work_schedule || formData.workSchedule || 'Full-time, Monday through Friday'}
+              </span>
+            </span>
+          </div>
+        </div>
+
+        <div className="signature-section">
+          <div className="signature-block">
+            <div className="signature-line">
+              <div className="signature-field">
+                ________________________________
+              </div>
+              <div className="signature-label">Company Representative</div>
+            </div>
+          </div>
+
+          <div className="signature-block">
+            <div className="signature-line">
+              <div className="signature-field">
+                ________________________________
+              </div>
+              <div className="signature-label">Employee Signature</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderDefaultTemplate = () => (
+    <div className="document-content">
+      <div className="document-header">
+        <h1 className="document-title">{documentTitle.toUpperCase()}</h1>
+      </div>
+
+      <div className="document-body">
+        <div className="terms-section">
+          {Object.entries(formData).filter(([key]) => key !== 'templateId').map(([key, value], index) => (
+            <div key={key} className="numbered-clause">
+              <span className="clause-number">{index + 1}.</span>
+              <span className="clause-text">
+                <strong>{key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').replace(/\b\w/g, l => l.toUpperCase())}:</strong>{' '}
+                <span className="underline-field">
+                  {String(value) || '________________________'}
+                </span>
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="signature-section">
+          <div className="signature-block">
+            <div className="signature-line">
+              <div className="signature-field">
+                ________________________________
+              </div>
+              <div className="signature-label">Party A Signature</div>
+            </div>
+          </div>
+
+          <div className="signature-block">
+            <div className="signature-line">
+              <div className="signature-field">
+                ________________________________
+              </div>
+              <div className="signature-label">Party B Signature</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderTemplate = () => {
+    const templateName = getTemplateName();
+    
+    if (templateName.includes('loan')) {
+      return renderLoanAgreement();
+    } else if (templateName.includes('service')) {
+      return renderServiceAgreement();
+    } else if (templateName.includes('employment')) {
+      return renderEmploymentContract();
+    } else {
+      return renderDefaultTemplate();
     }
   };
 
@@ -139,19 +462,8 @@ export function DocumentTemplateRenderer({
     window.print();
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  const templateSchema = template?.template_schema || { fieldGroups: [] };
-  const fieldGroups: FieldGroup[] = templateSchema.fieldGroups || [];
-
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className={cn("document-renderer max-w-4xl mx-auto", className)}>
       {/* Print Button */}
       <div className="mb-4 print:hidden">
         <Button onClick={handlePrint} variant="outline" size="sm">
@@ -160,140 +472,198 @@ export function DocumentTemplateRenderer({
         </Button>
       </div>
 
-      {/* Document Header */}
-      <Card className="mb-6 print:shadow-none">
-        <CardHeader className="text-center border-b">
-          <div className="space-y-4">
-            <div>
-              <CardTitle className="text-2xl font-bold text-center mb-2">
-                {documentTitle}
-              </CardTitle>
-              <div className="flex justify-center">
-                <Badge className={`${getStatusColor(status)} font-medium`}>
-                  {status.replace('_', ' ').toUpperCase()}
-                </Badge>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center justify-center">
-                <FileText className="h-4 w-4 mr-2" />
-                Document ID: {documentId.slice(0, 8)}...
-              </div>
-              <div className="flex items-center justify-center">
-                <Calendar className="h-4 w-4 mr-2" />
-                Created: {formatDate(new Date(createdAt), 'MMM d, yyyy')}
-              </div>
-              <div className="flex items-center justify-center">
-                <User className="h-4 w-4 mr-2" />
-                Version: {parsedData.version || 1}
-              </div>
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
+      {/* Legal Document Styles */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        .document-content {
+          max-width: 8.5in;
+          margin: 0 auto;
+          padding: 1in;
+          background: white;
+          font-family: 'Times New Roman', serif;
+          font-size: 12pt;
+          line-height: 1.6;
+          color: black;
+          box-shadow: 0 0 10px rgba(0,0,0,0.1);
+          min-height: 11in;
+        }
 
-      {/* Document Content */}
-      <div className="space-y-6">
-        {fieldGroups.length > 0 ? (
-          fieldGroups.map((group: FieldGroup, groupIndex: number) => (
-            <Card key={groupIndex} className="print:shadow-none print:border">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold border-b pb-2">
-                  {group.title}
-                </CardTitle>
-                {group.description && (
-                  <p className="text-sm text-muted-foreground">{group.description}</p>
-                )}
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {group.fields.map((field: TemplateField, fieldIndex: number) => {
-                    const value = parsedData.formData?.[field.name];
-                    return (
-                      <div key={fieldIndex} className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          {getFieldIcon(field.type, field.name)}
-                          <label className="text-sm font-medium text-muted-foreground">
-                            {field.label}
-                          </label>
-                        </div>
-                        <div className="pl-6">
-                          <p className="text-base font-medium">
-                            {formatFieldValue(field, value)}
-                          </p>
-                          {field.description && value && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {field.description}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          // Fallback for documents without template schema
-          <Card className="print:shadow-none">
-            <CardHeader>
-              <CardTitle>Document Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {Object.entries(parsedData.formData || parsedData).map(([key, value]: [string, any]) => {
-                  if (key === 'templateId' || !value || value === '') return null;
-                  
-                  // Smart field type detection for formatting
-                  const fieldType = key.toLowerCase().includes('date') ? 'date' :
-                                  key.toLowerCase().includes('amount') || key.toLowerCase().includes('price') ? 'currency' :
-                                  'text';
-                  
-                  const mockField: TemplateField = {
-                    name: key,
-                    label: key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' '),
-                    type: fieldType
-                  };
-                  
-                  return (
-                    <div key={key} className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        {getFieldIcon(fieldType, key)}
-                        <label className="text-sm font-medium text-muted-foreground capitalize">
-                          {mockField.label}
-                        </label>
-                      </div>
-                      <div className="pl-6">
-                        <p className="text-base font-medium">
-                          {formatFieldValue(mockField, value)}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+        .document-header {
+          text-align: center;
+          margin-bottom: 2em;
+          padding-bottom: 1em;
+          border-bottom: 2px solid black;
+        }
 
-      {/* Document Footer */}
-      <Card className="mt-8 print:shadow-none">
-        <CardContent className="pt-6">
-          <Separator className="mb-4" />
-          <div className="text-center text-sm text-muted-foreground">
-            <p>This document was generated electronically and contains encrypted data.</p>
-            <p className="mt-1">
-              Generated on {formatDate(new Date(), 'MMMM d, yyyy \'at\' h:mm a')}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+        .document-title {
+          font-size: 18pt;
+          font-weight: bold;
+          text-decoration: underline;
+          margin: 0;
+          letter-spacing: 3px;
+          text-transform: uppercase;
+        }
 
-      {/* Print Styles - Using secure CSS injection */}
-      <PrintStyles />
+        .document-opening {
+          text-align: justify;
+          margin-bottom: 1.5em;
+          text-indent: 2em;
+          font-size: 11pt;
+        }
+
+        .parties-section {
+          margin: 2em 0;
+        }
+
+        .section-header {
+          font-weight: bold;
+          margin-bottom: 1em;
+          text-align: center;
+          font-size: 12pt;
+        }
+
+        .party-block {
+          margin: 2em 0;
+          text-align: center;
+        }
+
+        .party-line {
+          margin-bottom: 0.5em;
+          font-size: 11pt;
+        }
+
+        .party-designation {
+          font-style: italic;
+          margin: 0.5em 0;
+          font-size: 11pt;
+        }
+
+        .party-position {
+          font-weight: bold;
+          margin-top: 0.5em;
+          font-size: 11pt;
+          text-transform: uppercase;
+        }
+
+        .party-address {
+          font-size: 10pt;
+          margin: 0.5em 0;
+        }
+
+        .and-divider {
+          text-align: center;
+          font-weight: bold;
+          margin: 2em 0;
+          font-size: 14pt;
+          text-transform: uppercase;
+        }
+
+        .consideration-section {
+          margin: 2em 0;
+        }
+
+        .consideration-text {
+          text-align: justify;
+          text-indent: 2em;
+          font-size: 11pt;
+        }
+
+        .terms-section {
+          margin: 2em 0;
+        }
+
+        .section-title {
+          font-size: 14pt;
+          font-weight: bold;
+          text-decoration: underline;
+          margin-bottom: 1em;
+          text-align: center;
+          text-transform: uppercase;
+        }
+
+        .numbered-clause {
+          display: flex;
+          margin: 1.5em 0;
+          text-align: justify;
+          font-size: 11pt;
+        }
+
+        .clause-number {
+          min-width: 2em;
+          font-weight: bold;
+          font-size: 11pt;
+        }
+
+        .clause-text {
+          flex: 1;
+          text-indent: 1em;
+        }
+
+        .underline-field {
+          border-bottom: 1px solid black;
+          min-width: 120px;
+          display: inline-block;
+          text-align: center;
+          font-weight: bold;
+          padding: 0 5px;
+          margin: 0 2px;
+        }
+
+        .signature-section {
+          margin-top: 4em;
+          display: flex;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          page-break-inside: avoid;
+        }
+
+        .signature-block {
+          width: 45%;
+          margin: 1em 0;
+        }
+
+        .signature-line {
+          text-align: center;
+        }
+
+        .signature-field {
+          border-bottom: 1px solid black;
+          height: 3em;
+          margin-bottom: 0.5em;
+          width: 100%;
+        }
+
+        .signature-label {
+          font-size: 10pt;
+          font-weight: bold;
+          text-transform: uppercase;
+        }
+
+        .signature-date {
+          font-size: 10pt;
+          margin-top: 0.5em;
+        }
+
+        @media print {
+          .document-content {
+            box-shadow: none;
+            margin: 0;
+            padding: 0.5in;
+          }
+          
+          .print\\:hidden {
+            display: none !important;
+          }
+        }
+
+        @page {
+          margin: 0.5in;
+          size: letter;
+        }
+        `
+      }} />
+      
+      {renderTemplate()}
     </div>
   );
 }
