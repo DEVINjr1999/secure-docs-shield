@@ -383,7 +383,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string, rememberMe: boolean = false) => {
     try {
-      // Check for rate limiting here (could be implemented with a service)
+      // First, get user by email to check account status
+      const { data: userData } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (userData?.user) {
+        // Check if account is locked before proceeding
+        const { data: lockStatus } = await supabase.rpc('is_account_locked', {
+          p_user_id: userData.user.id,
+        });
+
+        if (lockStatus) {
+          // Get profile to show lockout details
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('account_locked_until, failed_login_attempts, account_status')
+            .eq('user_id', userData.user.id)
+            .single();
+
+          let lockMessage = 'Account is temporarily locked due to multiple failed login attempts.';
+          
+          if (profileData?.account_locked_until) {
+            const unlockTime = new Date(profileData.account_locked_until);
+            const now = new Date();
+            const timeLeft = Math.ceil((unlockTime.getTime() - now.getTime()) / (1000 * 60));
+            
+            if (timeLeft > 0) {
+              if (timeLeft < 60) {
+                lockMessage = `Account locked for ${timeLeft} more minute(s). Try "Forgot Password" to reset your account.`;
+              } else {
+                const hoursLeft = Math.ceil(timeLeft / 60);
+                lockMessage = `Account locked for ${hoursLeft} more hour(s). Try "Forgot Password" to reset your account.`;
+              }
+            }
+          } else if (profileData?.account_status === 'suspended') {
+            lockMessage = 'Account has been suspended. Please contact support.';
+          }
+
+          await logAuditEvent('login_blocked_locked_account', 'security', false, lockMessage, {
+            email,
+            attempts: profileData?.failed_login_attempts || 0,
+          });
+
+          return { 
+            error: { 
+              message: lockMessage,
+              code: 'account_locked'
+            } 
+          };
+        }
+      }
+
+      // Now attempt the actual login
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -398,9 +451,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Increment failed login attempts if user exists
         if (data?.user) {
-          await supabase.rpc('increment_failed_login', {
+          const { data: attemptCount } = await supabase.rpc('increment_failed_login', {
             p_user_id: data.user.id,
           });
+
+          // Add warning about upcoming lockout
+          if (attemptCount >= 3 && attemptCount < 5) {
+            const attemptsLeft = 5 - attemptCount;
+            error.message = `${error.message} (${attemptsLeft} attempts remaining before account lockout)`;
+          }
         }
 
         return { error };
