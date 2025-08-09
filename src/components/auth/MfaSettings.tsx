@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2, Shield, CheckCircle, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { MfaSetup } from './MfaSetup';
+import { SecurityQuestionsSetup } from './SecurityQuestionsSetup';
 
 export function MfaSettings() {
   const { user, profile, refreshProfile } = useAuth();
@@ -25,9 +25,13 @@ export function MfaSettings() {
     if (!user) return;
     
     try {
-      const { data } = await supabase.auth.mfa.listFactors();
-      const hasTotp = data?.totp?.length > 0;
-      setIsMfaEnabled(hasTotp);
+      const { data, error } = await supabase
+        .from('security_questions')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+      if (error) throw error;
+      setIsMfaEnabled((data?.length || 0) >= 2);
     } catch (error) {
       console.error('Error checking MFA status:', error);
     }
@@ -36,27 +40,26 @@ export function MfaSettings() {
   const handleDisableMfa = async () => {
     setIsLoading(true);
     try {
-      // Get current factors
-      const { data: factors } = await supabase.auth.mfa.listFactors();
-      
-      if (factors?.totp?.length > 0) {
-        // Unenroll each TOTP factor
-        for (const factor of factors.totp) {
-          await supabase.auth.mfa.unenroll({ factorId: factor.id });
-        }
-      }
+      if (!user) throw new Error('Not authenticated');
 
-      // Update profile to mark MFA as disabled
-      await supabase
+      const { error: qErr } = await supabase
+        .from('security_questions')
+        .update({ is_active: false })
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+      if (qErr) throw qErr;
+
+      const { error: pErr } = await supabase
         .from('profiles')
-        .update({ mfa_enabled: false })
-        .eq('user_id', user?.id);
+        .update({ mfa_enabled: false, mfa_method: null })
+        .eq('user_id', user.id);
+      if (pErr) throw pErr;
 
       setIsMfaEnabled(false);
       await refreshProfile();
       toast({
         title: "MFA Disabled",
-        description: "Two-factor authentication has been disabled",
+        description: "Security questions MFA has been disabled",
       });
     } catch (error: any) {
       toast({
@@ -69,8 +72,7 @@ export function MfaSettings() {
     }
   };
 
-  const handleMfaSetupComplete = async (codes: string[]) => {
-    setBackupCodes(codes);
+  const handleMfaSetupComplete = async () => {
     setShowSetup(false);
     setIsMfaEnabled(true);
     await refreshProfile();
@@ -105,8 +107,8 @@ export function MfaSettings() {
           <Shield className="h-4 w-4" />
           <AlertDescription>
             {isMfaEnabled 
-              ? "Your account is protected with two-factor authentication. You'll need to enter a code from your authenticator app when signing in."
-              : "Add an extra layer of security to your account by enabling two-factor authentication."
+              ? "Your account is protected with two-factor authentication. You'll be asked to answer your security questions when signing in."
+              : "Add an extra layer of security by enabling two-factor authentication with security questions."
             }
           </AlertDescription>
         </Alert>
@@ -141,7 +143,7 @@ export function MfaSettings() {
 
       <Dialog open={showSetup} onOpenChange={setShowSetup}>
         <DialogContent className="max-w-2xl">
-          <MfaSetup
+          <SecurityQuestionsSetup
             onComplete={handleMfaSetupComplete}
             onCancel={() => setShowSetup(false)}
             userEmail={user.email || ''}

@@ -87,7 +87,7 @@ export default function Auth() {
         setShowMfaVerification(true);
         toast({
           title: "MFA Required",
-          description: "Please enter your authentication code.",
+          description: "Please answer your security questions.",
         });
       } else {
         toast({

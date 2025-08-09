@@ -15,83 +15,75 @@ interface MfaVerificationProps {
 }
 
 export function MfaVerification({ onSuccess, onCancel, userEmail }: MfaVerificationProps) {
-  const [verificationCode, setVerificationCode] = useState('');
+  const [questions, setQuestions] = useState<{ id: string; question: string }[]>([]);
+  const [answers, setAnswers] = useState<string[]>(['', '']);
   const [isVerifying, setIsVerifying] = useState(false);
   const [attemptsLeft, setAttemptsLeft] = useState(3);
-  const [factorId, setFactorId] = useState<string | null>(null);
-  const [challengeId, setChallengeId] = useState<string | null>(null);
   const [initError, setInitError] = useState<string>('');
   const { toast } = useToast();
 
   useEffect(() => {
-    const prepareChallenge = async () => {
+    const loadQuestions = async () => {
       try {
         setInitError('');
-        // List factors and pick the first verified TOTP factor
-        const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
-        if (factorsError) throw factorsError;
+        const { data: userData, error: userErr } = await supabase.auth.getUser();
+        if (userErr || !userData.user) throw userErr || new Error('Not authenticated');
+        const userId = userData.user.id;
 
-        const totp = (factors?.totp || []).find((f: any) => f.status === 'verified') || factors?.totp?.[0];
-        if (!totp?.id) {
-          setInitError('Two-factor authentication is not set up for this account.');
+        const { data, error } = await supabase
+          .from('security_questions')
+          .select('id, question')
+          .eq('user_id', userId)
+          .eq('is_active', true)
+          .limit(2);
+        if (error) throw error;
+
+        if (!data || data.length < 2) {
+          setInitError('Security questions are not set up for this account.');
           return;
         }
-        setFactorId(totp.id);
-
-        // Create a challenge once on mount and reuse it
-        const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: totp.id });
-        if (challengeError) throw challengeError;
-        if (!challengeData?.id) {
-          setInitError('Failed to start authentication challenge. Please try again.');
-          return;
-        }
-        setChallengeId(challengeData.id);
+        setQuestions(data);
       } catch (e: any) {
-        console.error('MFA init failed:', e);
-        setInitError(e.message || 'Failed to initialize MFA. Please try again.');
+        console.error('MFA (questions) init failed:', e);
+        setInitError(e.message || 'Failed to load security questions.');
       }
     };
-    prepareChallenge();
+    loadQuestions();
   }, []);
 
-  const verifyWithCode = async () => {
-    if (!verificationCode || !factorId) return;
+  const verifyWithAnswers = async () => {
+    if (answers.some((a) => !a) || questions.length < 2) return;
     setIsVerifying(true);
     try {
-      let cid = challengeId;
-      if (!cid) {
-        // Re-create challenge if missing/expired
-        const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
-        if (challengeError) throw challengeError;
-        cid = challengeData?.id || null;
-        setChallengeId(cid);
+      const { data: userData, error: userErr } = await supabase.auth.getUser();
+      if (userErr || !userData.user) throw userErr || new Error('Not authenticated');
+      const userId = userData.user.id;
+
+      const payload = questions.map((q, idx) => ({ id: q.id, answer: answers[idx] }));
+      const { data, error } = await supabase.rpc('verify_security_answers', {
+        p_user_id: userId,
+        p_answers: payload as any,
+      });
+      if (error) throw error;
+
+      if (data === true) {
+        toast({ title: 'MFA Verified', description: 'Authentication completed successfully.' });
+        onSuccess();
+      } else {
+        setAttemptsLeft((n) => n - 1);
+        toast({ title: 'Verification Failed', description: 'Answers did not match. Please try again.', variant: 'destructive' });
       }
-      if (!cid) throw new Error('Unable to create verification challenge.');
-
-      const { error: verifyError } = await supabase.auth.mfa.verify({ factorId, challengeId: cid, code: verificationCode });
-      if (verifyError) throw verifyError;
-
-      toast({ title: 'MFA Verified', description: 'Authentication completed successfully.' });
-      onSuccess();
     } catch (error: any) {
-      console.error('MFA verify error:', error);
+      console.error('MFA verify (questions) error:', error);
       setAttemptsLeft((n) => n - 1);
-      let msg = error?.message || 'Failed to verify code';
-      if (msg.includes('uuid: incorrect UUID length')) {
-        msg = 'Challenge failed. We refreshed it — please enter your code again.';
-        setChallengeId(null); // force refresh on next attempt
-      }
-      if (msg.toLowerCase().includes('invalid totp')) {
-        msg = 'Invalid authentication code. Please check your authenticator app.';
-      }
-      toast({ title: 'Verification Failed', description: msg, variant: 'destructive' });
+      toast({ title: 'Verification Failed', description: error?.message || 'Failed to verify answers', variant: 'destructive' });
     } finally {
       setIsVerifying(false);
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') verifyWithCode();
+    if (e.key === 'Enter') verifyWithAnswers();
   };
 
   return (
@@ -101,7 +93,7 @@ export function MfaVerification({ onSuccess, onCancel, userEmail }: MfaVerificat
           <Shield className="h-5 w-5" />
           Two-Factor Authentication
         </CardTitle>
-        <CardDescription>Enter your authentication code for {userEmail}</CardDescription>
+        <CardDescription>Answer your security questions for {userEmail}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {(attemptsLeft < 3 || initError) && (
@@ -113,22 +105,28 @@ export function MfaVerification({ onSuccess, onCancel, userEmail }: MfaVerificat
           </Alert>
         )}
 
-        <div className="space-y-2">
-          <Label htmlFor="verification-code">Verification Code</Label>
-          <Input
-            id="verification-code"
-            placeholder="Enter 6-digit code"
-            value={verificationCode}
-            onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-            onKeyPress={handleKeyPress}
-            maxLength={6}
-            className="text-center text-lg tracking-widest font-mono"
-            autoComplete="one-time-code"
-          />
+        <div className="space-y-4">
+          {questions.map((q, idx) => (
+            <div key={q.id} className="space-y-2">
+              <Label htmlFor={`answer-${idx}`}>{q.question}</Label>
+              <Input
+                id={`answer-${idx}`}
+                placeholder="Your answer"
+                value={answers[idx] || ''}
+                onChange={(e) => {
+                  const next = [...answers];
+                  next[idx] = e.target.value;
+                  setAnswers(next);
+                }}
+                onKeyPress={handleKeyPress}
+                autoComplete="off"
+              />
+            </div>
+          ))}
         </div>
 
         <div className="flex gap-2">
-          <Button onClick={verifyWithCode} disabled={isVerifying || verificationCode.length !== 6 || !!initError} className="flex-1">
+          <Button onClick={verifyWithAnswers} disabled={isVerifying || answers.some((a) => !a) || !!initError} className="flex-1">
             {isVerifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Verify
           </Button>
