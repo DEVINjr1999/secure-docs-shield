@@ -465,6 +465,39 @@ export type Database = {
         }
         Relationships: []
       }
+      security_questions: {
+        Row: {
+          answer_hash: string
+          created_at: string
+          id: string
+          is_active: boolean
+          question: string
+          salt: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answer_hash: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          question: string
+          salt: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answer_hash?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          question?: string
+          salt?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_sessions: {
         Row: {
           created_at: string
@@ -591,6 +624,10 @@ export type Database = {
       reset_failed_login_attempts: {
         Args: { p_user_id: string }
         Returns: undefined
+      }
+      verify_security_answers: {
+        Args: { p_user_id: string; p_answers: Json }
+        Returns: boolean
       }
     }
     Enums: {
