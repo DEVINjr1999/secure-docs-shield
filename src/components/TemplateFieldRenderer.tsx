@@ -369,15 +369,28 @@ export const TemplateFieldRenderer: React.FC<TemplateFieldRendererProps> = ({ fi
                 <TooltipTrigger asChild>
                   <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
                 </TooltipTrigger>
-                <TooltipContent className="max-w-sm p-4 space-y-2">
-                  <div className="font-medium">{field.label}</div>
-                  <div className="text-sm">{fieldHint.help}</div>
-                  {fieldHint.format && (
-                    <div className="text-xs text-muted-foreground border-t pt-2">
-                      {fieldHint.format}
-                    </div>
-                  )}
-                </TooltipContent>
+                  <TooltipContent className="max-w-sm p-4 space-y-2">
+                    <div className="font-medium">{field.label}</div>
+                    <div className="text-sm">{fieldHint.hint}</div>
+                    <div className="text-sm text-muted-foreground">{fieldHint.help}</div>
+                    {smartSuggestions.length > 0 && (
+                      <div className="pt-1">
+                        <div className="text-xs mb-1">Suggestions</div>
+                        <div className="flex flex-wrap gap-1">
+                          {smartSuggestions.slice(0, 6).map((s) => (
+                            <Badge key={s} variant="secondary" className="text-xs">
+                              {s}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {fieldHint.format && (
+                      <div className="text-xs text-muted-foreground border-t pt-2">
+                        {fieldHint.format}
+                      </div>
+                    )}
+                  </TooltipContent>
               </Tooltip>
             </div>
             
