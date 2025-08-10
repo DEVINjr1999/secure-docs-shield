@@ -223,6 +223,7 @@ export default function Auth() {
           onSuccess={handleMfaSuccess}
           onCancel={handleMfaCancel}
           userEmail={pendingUser.email || ''}
+          userId={pendingUser.id}
         />
       </div>
     );

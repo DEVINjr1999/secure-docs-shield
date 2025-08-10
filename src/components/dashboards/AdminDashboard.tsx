@@ -29,6 +29,7 @@ import {
   Plus,
   Calendar,
   User,
+  CheckCircle,
   Link as LinkIcon
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -285,6 +286,60 @@ export function AdminDashboard() {
         description: 'Failed to reassign document',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleAssignToMe = async (documentId: string) => {
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const uid = authData.user?.id;
+      if (!uid) throw new Error('Not authenticated');
+
+      const { error } = await supabase
+        .from('documents')
+        .update({ assigned_reviewer_id: uid, status: 'under_review' })
+        .eq('id', documentId);
+      if (error) throw error;
+
+      await supabase.rpc('log_audit_event', {
+        p_user_id: uid,
+        p_event: 'document_self_assigned',
+        p_action_type: 'document',
+        p_document_id: documentId,
+        p_metadata: { reviewer_id: uid }
+      });
+
+      toast({ title: 'Assigned', description: 'You are now the reviewer.' });
+      fetchDocuments();
+      fetchReviewers();
+    } catch (error) {
+      console.error('Error assigning to self:', error);
+      toast({ title: 'Error', description: 'Failed to assign', variant: 'destructive' });
+    }
+  };
+
+  const handleApproveDocument = async (documentId: string) => {
+    try {
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from('documents')
+        .update({ status: 'approved', approved_at: now, reviewed_at: now })
+        .eq('id', documentId);
+      if (error) throw error;
+
+      const { data: authData } = await supabase.auth.getUser();
+      await supabase.rpc('log_audit_event', {
+        p_user_id: authData.user?.id,
+        p_event: 'document_approved',
+        p_action_type: 'document',
+        p_document_id: documentId,
+      });
+
+      toast({ title: 'Approved', description: 'Document approved successfully.' });
+      fetchDocuments();
+    } catch (error) {
+      console.error('Error approving document:', error);
+      toast({ title: 'Error', description: 'Failed to approve', variant: 'destructive' });
     }
   };
 
@@ -570,6 +625,20 @@ export function AdminDashboard() {
                         <TableCell>{format(new Date(doc.created_at), 'MMM dd, yyyy')}</TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAssignToMe(doc.id)}
+                            >
+                              <Shield className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleApproveDocument(doc.id)}
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"

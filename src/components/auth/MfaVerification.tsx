@@ -12,9 +12,10 @@ interface MfaVerificationProps {
   onSuccess: () => void;
   onCancel: () => void;
   userEmail: string;
+  userId: string;
 }
 
-export function MfaVerification({ onSuccess, onCancel, userEmail }: MfaVerificationProps) {
+export function MfaVerification({ onSuccess, onCancel, userEmail, userId }: MfaVerificationProps) {
   const [questions, setQuestions] = useState<{ id: string; question: string }[]>([]);
   const [answers, setAnswers] = useState<string[]>(['', '']);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -26,14 +27,13 @@ export function MfaVerification({ onSuccess, onCancel, userEmail }: MfaVerificat
     const loadQuestions = async () => {
       try {
         setInitError('');
-        const { data: userData, error: userErr } = await supabase.auth.getUser();
-        if (userErr || !userData.user) throw userErr || new Error('Not authenticated');
-        const userId = userData.user.id;
+        const uid = userId;
+        if (!uid) throw new Error('Not authenticated');
 
         const { data, error } = await supabase
           .from('security_questions')
           .select('id, question')
-          .eq('user_id', userId)
+          .eq('user_id', uid)
           .eq('is_active', true)
           .limit(2);
         if (error) throw error;
@@ -55,13 +55,12 @@ export function MfaVerification({ onSuccess, onCancel, userEmail }: MfaVerificat
     if (answers.some((a) => !a) || questions.length < 2) return;
     setIsVerifying(true);
     try {
-      const { data: userData, error: userErr } = await supabase.auth.getUser();
-      if (userErr || !userData.user) throw userErr || new Error('Not authenticated');
-      const userId = userData.user.id;
+      const uid = userId;
+      if (!uid) throw new Error('Not authenticated');
 
       const payload = questions.map((q, idx) => ({ id: q.id, answer: answers[idx] }));
       const { data, error } = await supabase.rpc('verify_security_answers', {
-        p_user_id: userId,
+        p_user_id: uid,
         p_answers: payload as any,
       });
       if (error) throw error;
