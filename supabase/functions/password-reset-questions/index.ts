@@ -1,9 +1,11 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Content-Type": "application/json",
 };
 
 serve(async (req) => {
@@ -18,7 +20,7 @@ serve(async (req) => {
     if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
       return new Response(
         JSON.stringify({ success: false, message: "Server not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -34,13 +36,19 @@ serve(async (req) => {
       user_agent: req.headers.get("user-agent") || null,
     });
 
+    // Helper to return OK with a failure payload for expected errors
+    const okFail = (message: string, extra: Record<string, unknown> = {}) =>
+      new Response(JSON.stringify({ success: false, message, ...extra }), {
+        status: 200,
+        headers: corsHeaders,
+      });
+
     if (action === "init") {
       const email = (body.email || "").toString().trim().toLowerCase();
+
+      // Return 200 with failure for invalid email so client gets a proper payload
       if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-        return new Response(
-          JSON.stringify({ success: false, message: "Please provide a valid email." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return okFail("Please provide a valid email.");
       }
 
       // Use admin.generateLink to get user details without sending an email
@@ -51,10 +59,7 @@ serve(async (req) => {
 
       if (linkError || !linkData?.user?.id) {
         // Avoid user enumeration
-        return new Response(
-          JSON.stringify({ success: false, message: "Security questions are not available for this account." }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return okFail("Security questions are not available for this account.");
       }
 
       const userId = linkData.user.id as string;
@@ -67,10 +72,7 @@ serve(async (req) => {
         .limit(2);
 
       if (qErr || !questions || questions.length < 2) {
-        return new Response(
-          JSON.stringify({ success: false, message: "Security questions are not available for this account." }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return okFail("Security questions are not available for this account.");
       }
 
       // Log audit event
@@ -83,7 +85,7 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, user_id: userId, questions }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: corsHeaders }
       );
     }
 
@@ -93,17 +95,11 @@ serve(async (req) => {
       const new_password = (body.new_password || "").toString();
 
       if (!user_id || answers.length < 2) {
-        return new Response(
-          JSON.stringify({ success: false, message: "Invalid request." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return okFail("Invalid request.");
       }
 
       if (new_password.length < 12) {
-        return new Response(
-          JSON.stringify({ success: false, message: "Password must be at least 12 characters." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return okFail("Password must be at least 12 characters.");
       }
 
       // Verify answers using secure RPC
@@ -122,10 +118,7 @@ serve(async (req) => {
           metadata: { reason: vErr?.message || "verification_failed", client: getClientInfo() },
         });
 
-        return new Response(
-          JSON.stringify({ success: false, message: "Verification failed. Please check your answers." }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return okFail("Verification failed. Please check your answers.");
       }
 
       // Update password via Admin API
@@ -142,14 +135,15 @@ serve(async (req) => {
           metadata: { error: updErr.message, client: getClientInfo() },
         });
 
-        return new Response(
-          JSON.stringify({ success: false, message: "Could not update password. Try again later." }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        // Treat as expected failure for client UX
+        return okFail("Could not update password. Try again later.");
       }
 
       // Invalidate existing sessions
-      await supabase.rpc("invalidate_user_sessions", { p_user_id: user_id, p_reason: "password_reset_questions" });
+      await supabase.rpc("invalidate_user_sessions", {
+        p_user_id: user_id,
+        p_reason: "password_reset_questions",
+      });
 
       // Log success
       await supabase.from("audit_logs").insert({
@@ -162,18 +156,17 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, message: "Password updated successfully." }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: corsHeaders }
       );
     }
 
-    return new Response(
-      JSON.stringify({ success: false, message: "Unsupported action" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    // Unsupported action as a handled failure (200)
+    return okFail("Unsupported action");
   } catch (e) {
+    // Unexpected server error
     return new Response(
       JSON.stringify({ success: false, message: "Server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: corsHeaders }
     );
   }
 });
