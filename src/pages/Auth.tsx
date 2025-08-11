@@ -12,6 +12,8 @@ import { toast } from '@/hooks/use-toast';
 import { Loader2, Eye, EyeOff, Shield, Lock, AlertTriangle } from 'lucide-react';
 import ReCAPTCHA from 'react-google-recaptcha';
 import { MfaVerification } from '@/components/auth/MfaVerification';
+import { Separator } from '@/components/ui/separator';
+import SecurityQuestionReset from '@/components/auth/SecurityQuestionReset';
 
 export default function Auth() {
   const { user, signIn, signUp, resetPassword, loading, verifyMfa } = useAuth();
@@ -527,7 +529,20 @@ export default function Auth() {
                     )}
                   </Button>
                 </form>
+
+                <div className="relative my-6">
+                  <Separator />
+                  <div className="absolute inset-x-0 -top-3 flex justify-center">
+                    <span className="px-2 text-xs text-muted-foreground bg-background">or</span>
+                  </div>
+                </div>
+
+                <SecurityQuestionReset onSuccess={() => {
+                  setActiveTab('signin');
+                  setSuccessMessage('Password updated. Please sign in with your new password.');
+                }} />
               </TabsContent>
+
             </Tabs>
 
             <div className="mt-6 text-center text-sm text-muted-foreground">
