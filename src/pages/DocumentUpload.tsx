@@ -22,6 +22,7 @@ import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { TemplateFieldGroup } from '@/components/TemplateFieldGroup';
+import { Switch } from '@/components/ui/switch';
 import { Loader2, Upload, FileText, Shield, ArrowLeft, Clock, CheckCircle } from 'lucide-react';
 
 const uploadSchema = z.object({
@@ -40,6 +41,8 @@ const uploadSchema = z.object({
   ]).optional(),
   encryption_mode: z.enum(['auto', 'custom']),
   custom_encryption_key: z.string().optional(),
+  share_with_reviewer: z.boolean().default(false),
+  share_expiry_hours: z.coerce.number().int().min(1).max(720).optional(),
 }).refine((data) => {
   if (data.encryption_mode === 'custom' && data.custom_encryption_key) {
     const key = data.custom_encryption_key;
@@ -79,16 +82,18 @@ export default function DocumentUpload() {
   const preselectedTemplate = urlParams.get('template');
   const preselectedType = urlParams.get('type');
 
-  const form = useForm<UploadFormData>({
-    resolver: zodResolver(uploadSchema),
-    defaultValues: {
-      upload_type: preselectedType === 'template' ? 'template' : 'file',
-      template_id: preselectedTemplate || undefined,
-      document_type: 'other',
-      jurisdiction: 'federal_australia',
-      encryption_mode: 'auto',
-    },
-  });
+const form = useForm<UploadFormData>({
+  resolver: zodResolver(uploadSchema),
+  defaultValues: {
+    upload_type: preselectedType === 'template' ? 'template' : 'file',
+    template_id: preselectedTemplate || undefined,
+    document_type: 'other',
+    jurisdiction: 'federal_australia',
+    encryption_mode: 'auto',
+    share_with_reviewer: false,
+    share_expiry_hours: undefined,
+  },
+});
 
   const uploadType = form.watch('upload_type');
   const templateId = form.watch('template_id');
@@ -707,45 +712,85 @@ export default function DocumentUpload() {
                 )}
               />
 
-              {encryptionMode === 'custom' && (
-                <FormField
-                  control={form.control}
-                  name="custom_encryption_key"
-                  render={({ field }) => (
-                  <FormItem>
-                    <div className="flex items-center gap-2">
-                      <FormLabel>Custom Encryption Key *</FormLabel>
-                      <HelpTooltip 
-                        content={helpContent.customEncryptionKey}
-                        title="Strong Key Requirements"
-                      />
-                    </div>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="Enter your encryption key (min 10 chars, A-z, 0-9, special chars)"
-                        {...field}
-                      />
-                    </FormControl>
-                      <FormDescription>
-                        <div className="space-y-1 text-xs">
-                          <div>Requirements for your encryption key:</div>
-                          <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
-                            <li>At least 10 characters long</li>
-                            <li>Contains uppercase letters (A-Z)</li>
-                            <li>Contains lowercase letters (a-z)</li>
-                            <li>Contains numbers (0-9)</li>
-                            <li>Contains special characters (!@#$%^&*...)</li>
-                          </ul>
-                        </div>
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-            </CardContent>
-          </Card>
+{encryptionMode === 'custom' && (
+  <FormField
+    control={form.control}
+    name="custom_encryption_key"
+    render={({ field }) => (
+    <FormItem>
+      <div className="flex items-center gap-2">
+        <FormLabel>Custom Encryption Key *</FormLabel>
+        <HelpTooltip 
+          content={helpContent.customEncryptionKey}
+          title="Strong Key Requirements"
+        />
+      </div>
+      <FormControl>
+        <Input
+          type="password"
+          placeholder="Enter your encryption key (min 10 chars, A-z, 0-9, special chars)"
+          {...field}
+        />
+      </FormControl>
+        <FormDescription>
+          <div className="space-y-1 text-xs">
+            <div>Requirements for your encryption key:</div>
+            <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
+              <li>At least 10 characters long</li>
+              <li>Contains uppercase letters (A-Z)</li>
+              <li>Contains lowercase letters (a-z)</li>
+              <li>Contains numbers (0-9)</li>
+              <li>Contains special characters (!@#$%^&*...)</li>
+            </ul>
+          </div>
+        </FormDescription>
+        <FormMessage />
+      </FormItem>
+    )}
+  />
+)}
+
+<div className="pt-4 border-t rounded-md">
+  <div className="flex items-center justify-between">
+    <div>
+      <FormLabel>Share key with assigned reviewer</FormLabel>
+      <FormDescription>
+        Allow the reviewer to decrypt and review your document. You can set an optional expiry.
+      </FormDescription>
+    </div>
+    <FormField
+      control={form.control}
+      name="share_with_reviewer"
+      render={({ field }) => (
+        <FormItem>
+          <FormControl>
+            <Switch checked={field.value} onCheckedChange={field.onChange} />
+          </FormControl>
+        </FormItem>
+      )}
+    />
+  </div>
+
+  {form.watch('share_with_reviewer') && (
+    <div className="mt-4 grid sm:grid-cols-2 gap-4">
+      <FormField
+        control={form.control}
+        name="share_expiry_hours"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Expiry (hours, optional)</FormLabel>
+            <FormControl>
+              <Input type="number" min={1} max={720} placeholder="e.g., 168 for 7 days" {...field} />
+            </FormControl>
+            <FormDescription>Leave empty for no expiry (max 30 days if set).</FormDescription>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </div>
+  )}
+</div>
+
 
           {/* Document Metadata */}
           <Card>

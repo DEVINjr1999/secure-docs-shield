@@ -173,6 +173,33 @@ export type Database = {
           },
         ]
       }
+      document_key_shares: {
+        Row: {
+          created_at: string
+          document_id: string
+          expires_at: string | null
+          id: string
+          key_value: string
+          shared_by: string
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          expires_at?: string | null
+          id?: string
+          key_value: string
+          shared_by: string
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          expires_at?: string | null
+          id?: string
+          key_value?: string
+          shared_by?: string
+        }
+        Relationships: []
+      }
       document_signatures: {
         Row: {
           created_at: string
