@@ -428,6 +428,7 @@ const form = useForm<UploadFormData>({
 
       // Share encryption key with reviewer if requested
       if (data.share_with_reviewer) {
+        console.log('Attempting to share key with reviewer, toggle state:', data.share_with_reviewer);
         try {
           await createKeyShare(
             insertedDoc.id, 
@@ -446,6 +447,8 @@ const form = useForm<UploadFormData>({
             variant: 'destructive',
           });
         }
+      } else {
+        console.log('Key sharing not requested, toggle state:', data.share_with_reviewer);
       }
 
       // Show encryption key to user instead of navigating immediately
