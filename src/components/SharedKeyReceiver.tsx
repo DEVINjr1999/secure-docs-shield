@@ -28,6 +28,7 @@ export function SharedKeyReceiver() {
 
   const loadSharedDocuments = async () => {
     try {
+      console.log('Loading shared documents for user...');
       const { data, error } = await supabase
         .from('document_key_shares')
         .select(`
@@ -37,6 +38,8 @@ export function SharedKeyReceiver() {
           shared_by
         `)
         .order('created_at', { ascending: false });
+
+      console.log('Key shares query result:', { data, error });
 
       if (error) throw error;
 
