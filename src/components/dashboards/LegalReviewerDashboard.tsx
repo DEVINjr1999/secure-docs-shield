@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { SharedKeyReceiver } from '@/components/SharedKeyReceiver';
 
 interface Document {
   id: string;
@@ -150,6 +151,9 @@ export function LegalReviewerDashboard() {
 
   return (
     <div className="grid gap-6">
+      {/* Shared Documents */}
+      <SharedKeyReceiver />
+
       {/* Review Queue Stats */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>

@@ -36,6 +36,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { SharedKeyReceiver } from '@/components/SharedKeyReceiver';
 
 interface Document {
   id: string;
@@ -472,6 +473,9 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Shared Documents */}
+      <SharedKeyReceiver />
+
       {/* System Overview Stats */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>

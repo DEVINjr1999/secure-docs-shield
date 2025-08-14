@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -24,6 +24,7 @@ import {
 
 export default function ReviewerDocumentView() {
   const { documentId } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, isRole } = useAuth();
   const { toast } = useToast();
@@ -33,10 +34,17 @@ export default function ReviewerDocumentView() {
   const [decryptedContent, setDecryptedContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [sharedKey, setSharedKey] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if user has legal_reviewer role
-    if (user && !isRole('legal_reviewer')) {
+    // Check for shared key in URL params
+    const urlSharedKey = searchParams.get('sharedKey');
+    if (urlSharedKey) {
+      setSharedKey(decodeURIComponent(urlSharedKey));
+    }
+
+    // Check if user has legal_reviewer role or admin role (admins can also view via shared keys)
+    if (user && !isRole('legal_reviewer') && !isRole('admin')) {
       toast({
         title: "Access Denied",
         description: "You don't have permission to access this document",
@@ -56,15 +64,20 @@ export default function ReviewerDocumentView() {
     if (!documentId || !user) return;
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('documents')
         .select(`
           *,
           user_profile:profiles!documents_user_id_fkey(full_name, role)
         `)
-        .eq('id', documentId)
-        .eq('assigned_reviewer_id', user.id) // Ensure only assigned reviewer can access
-        .single();
+        .eq('id', documentId);
+
+      // If user is admin or has a shared key, allow access without assigned reviewer check
+      if (!isRole('admin') && !sharedKey) {
+        query = query.eq('assigned_reviewer_id', user.id);
+      }
+
+      const { data, error } = await query.single();
 
       if (error) throw error;
       
@@ -207,6 +220,28 @@ export default function ReviewerDocumentView() {
   const handleDecryptedContent = (content: string) => {
     setDecryptedContent(content);
   };
+
+  // Auto-decrypt if we have a shared key
+  useEffect(() => {
+    if (sharedKey && document?.encrypted_content && !decryptedContent) {
+      try {
+        const { decryptData } = require('@/lib/encryption');
+        const content = decryptData(document.encrypted_content, sharedKey);
+        setDecryptedContent(content);
+        toast({
+          title: "Document Decrypted",
+          description: "Document automatically decrypted using shared key",
+        });
+      } catch (error) {
+        console.error('Auto-decryption failed:', error);
+        toast({
+          title: "Decryption Failed",
+          description: "Failed to decrypt document with shared key",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [sharedKey, document, decryptedContent]);
 
   const getStatusVariant = (status: string) => {
     switch (status) {
