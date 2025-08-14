@@ -10,6 +10,7 @@ import AppLayout from '@/components/AppLayout';
 import { encryptData, encryptFile, generateDocumentKey, hashKey } from '@/lib/encryption';
 import { EncryptionKeyDisplay } from '@/components/EncryptionKeyDisplay';
 import { HelpTooltip, helpContent } from '@/components/HelpTooltip';
+import { createKeyShare } from '@/lib/keyShares';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -424,6 +425,28 @@ const form = useForm<UploadFormData>({
       await supabase.rpc('auto_assign_reviewer', {
         p_document_id: insertedDoc.id
       });
+
+      // Share encryption key with reviewer if requested
+      if (data.share_with_reviewer) {
+        try {
+          await createKeyShare(
+            insertedDoc.id, 
+            encryptionKey, 
+            data.share_expiry_hours
+          );
+          toast({
+            title: 'Key Shared',
+            description: 'Encryption key has been shared with the assigned reviewer',
+          });
+        } catch (keyShareError: any) {
+          console.error('Failed to share key:', keyShareError);
+          toast({
+            title: 'Warning',
+            description: 'Document uploaded but failed to share key with reviewer',
+            variant: 'destructive',
+          });
+        }
+      }
 
       // Show encryption key to user instead of navigating immediately
       // Only show key if it was auto-generated
