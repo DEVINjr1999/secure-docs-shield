@@ -482,7 +482,7 @@ const form = useForm<UploadFormData>({
             End-to-end encrypted
           </div>
         </div>
-      </div>
+        </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -750,46 +750,48 @@ const form = useForm<UploadFormData>({
   />
 )}
 
-<div className="pt-4 border-t rounded-md">
-  <div className="flex items-center justify-between">
-    <div>
-      <FormLabel>Share key with assigned reviewer</FormLabel>
-      <FormDescription>
-        Allow the reviewer to decrypt and review your document. You can set an optional expiry.
-      </FormDescription>
-    </div>
-    <FormField
-      control={form.control}
-      name="share_with_reviewer"
-      render={({ field }) => (
-        <FormItem>
-          <FormControl>
-            <Switch checked={field.value} onCheckedChange={field.onChange} />
-          </FormControl>
-        </FormItem>
-      )}
-    />
-  </div>
+              <div className="pt-4 border-t rounded-md">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <FormLabel>Share key with assigned reviewer</FormLabel>
+                    <FormDescription>
+                      Allow the reviewer to decrypt and review your document. You can set an optional expiry.
+                    </FormDescription>
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="share_with_reviewer"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-  {form.watch('share_with_reviewer') && (
-    <div className="mt-4 grid sm:grid-cols-2 gap-4">
-      <FormField
-        control={form.control}
-        name="share_expiry_hours"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Expiry (hours, optional)</FormLabel>
-            <FormControl>
-              <Input type="number" min={1} max={720} placeholder="e.g., 168 for 7 days" {...field} />
-            </FormControl>
-            <FormDescription>Leave empty for no expiry (max 30 days if set).</FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-    </div>
-  )}
-</div>
+                {form.watch('share_with_reviewer') && (
+                  <div className="mt-4 grid sm:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="share_expiry_hours"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Expiry (hours, optional)</FormLabel>
+                          <FormControl>
+                            <Input type="number" min={1} max={720} placeholder="e.g., 168 for 7 days" {...field} />
+                          </FormControl>
+                          <FormDescription>Leave empty for no expiry (max 30 days if set).</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
 
           {/* Document Metadata */}
