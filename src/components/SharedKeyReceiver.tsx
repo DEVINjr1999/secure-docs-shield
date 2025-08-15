@@ -29,50 +29,86 @@ export function SharedKeyReceiver() {
   const loadSharedDocuments = async () => {
     try {
       console.log('Loading shared documents for user...');
-      const { data, error } = await supabase
-        .from('document_key_shares')
-        .select(`
-          document_id,
-          created_at,
-          expires_at,
-          shared_by
-        `)
-        .order('created_at', { ascending: false });
+      
+      // Get current user's profile to check role
+      const { data: userProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
 
-      console.log('Key shares query result:', { data, error });
+      console.log('User profile:', userProfile);
 
-      if (error) throw error;
+      if (profileError) throw profileError;
 
-      // Fetch documents and profiles separately
-      const formattedDocs = await Promise.all(
-        (data || []).map(async (share) => {
-          const [docResult, profileResult] = await Promise.all([
-            supabase
-              .from('documents')
-              .select('id, title, document_type, status, created_at')
-              .eq('id', share.document_id)
-              .single(),
-            supabase
-              .from('profiles')
-              .select('full_name')
-              .eq('user_id', share.shared_by)
-              .single()
-          ]);
+      let documentsQuery;
+      
+      if (userProfile?.role === 'admin') {
+        // Admins can see all documents that have shared keys
+        documentsQuery = supabase
+          .from('documents')
+          .select(`
+            id, title, document_type, status, created_at,
+            profiles!documents_user_id_fkey(full_name)
+          `)
+          .order('created_at', { ascending: false });
+      } else {
+        // Legal reviewers can only see documents assigned to them
+        documentsQuery = supabase
+          .from('documents')
+          .select(`
+            id, title, document_type, status, created_at,
+            profiles!documents_user_id_fkey(full_name)
+          `)
+          .eq('assigned_reviewer_id', (await supabase.auth.getUser()).data.user?.id)
+          .order('created_at', { ascending: false });
+      }
+
+      const { data: documents, error: docsError } = await documentsQuery;
+      console.log('Documents query result:', { documents, error: docsError });
+
+      if (docsError) throw docsError;
+
+      // For each document, check if there's a shared key
+      const documentsWithKeys = await Promise.all(
+        (documents || []).map(async (doc) => {
+          const { data: keyShare, error: keyError } = await supabase
+            .from('document_key_shares')
+            .select('created_at, expires_at, shared_by')
+            .eq('document_id', doc.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          console.log(`Key share for document ${doc.id}:`, { keyShare, keyError });
+
+          if (keyError || !keyShare) return null;
+
+          // Get the profile of the person who shared the key
+          const { data: sharedByProfile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('user_id', keyShare.shared_by)
+            .single();
 
           return {
-            id: docResult.data?.id || '',
-            title: docResult.data?.title || 'Unknown',
-            document_type: docResult.data?.document_type || 'Unknown',
-            status: docResult.data?.status || 'Unknown',
-            created_at: docResult.data?.created_at || '',
-            shared_at: share.created_at,
-            expires_at: share.expires_at,
-            shared_by_name: profileResult.data?.full_name || 'Unknown'
+            id: doc.id,
+            title: doc.title,
+            document_type: doc.document_type,
+            status: doc.status,
+            created_at: doc.created_at,
+            shared_at: keyShare.created_at,
+            expires_at: keyShare.expires_at,
+            shared_by_name: sharedByProfile?.full_name || 'Unknown'
           };
         })
       );
 
-      setSharedDocuments(formattedDocs);
+      // Filter out null results (documents without shared keys)
+      const validDocuments = documentsWithKeys.filter(doc => doc !== null);
+      console.log('Final documents with shared keys:', validDocuments);
+      
+      setSharedDocuments(validDocuments);
     } catch (error) {
       console.error('Error loading shared documents:', error);
       toast({
