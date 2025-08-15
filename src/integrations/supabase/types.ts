@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
@@ -580,34 +580,34 @@ export type Database = {
       get_user_profile: {
         Args: { p_user_id: string }
         Returns: {
-          id: string
-          user_id: string
-          full_name: string
-          role: string
-          account_status: string
-          created_at: string
-          updated_at: string
-          deleted_at: string
-          session_count: number
-          last_activity_at: string
-          last_login_at: string
-          gdpr_consent_at: string
-          privacy_consent_at: string
-          mfa_enabled: boolean
-          locale: string
-          username: string
-          avatar_url: string
-          phone: string
-          recovery_email: string
-          terms_accepted_at: string
-          mfa_method: string
-          email_verified_at: string
-          is_compromised: boolean
           account_locked_until: string
-          last_failed_login_at: string
-          timezone: string
+          account_status: string
+          avatar_url: string
+          created_at: string
+          deleted_at: string
+          email_verified_at: string
           failed_login_attempts: number
+          full_name: string
+          gdpr_consent_at: string
+          id: string
+          is_compromised: boolean
+          last_activity_at: string
+          last_failed_login_at: string
+          last_login_at: string
+          locale: string
+          mfa_enabled: boolean
+          mfa_method: string
           mfa_verified_at: string
+          phone: string
+          privacy_consent_at: string
+          recovery_email: string
+          role: string
+          session_count: number
+          terms_accepted_at: string
+          timezone: string
+          updated_at: string
+          user_id: string
+          username: string
         }[]
       }
       increment_failed_login: {
@@ -615,7 +615,7 @@ export type Database = {
         Returns: number
       }
       invalidate_user_sessions: {
-        Args: { p_user_id: string; p_reason?: string }
+        Args: { p_reason?: string; p_user_id: string }
         Returns: undefined
       }
       is_account_locked: {
@@ -628,19 +628,19 @@ export type Database = {
       }
       log_audit_event: {
         Args: {
-          p_user_id: string
-          p_event: string
           p_action_type: string
-          p_ip_address?: unknown
-          p_user_agent?: string
-          p_session_id?: string
-          p_document_id?: string
-          p_old_values?: Json
-          p_new_values?: Json
           p_device_info?: Json
-          p_success?: boolean
+          p_document_id?: string
           p_error_details?: string
+          p_event: string
+          p_ip_address?: unknown
           p_metadata?: Json
+          p_new_values?: Json
+          p_old_values?: Json
+          p_session_id?: string
+          p_success?: boolean
+          p_user_agent?: string
+          p_user_id: string
         }
         Returns: string
       }
@@ -652,8 +652,12 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: undefined
       }
+      verify_admin_reviewer_password: {
+        Args: { p_password: string }
+        Returns: boolean
+      }
       verify_security_answers: {
-        Args: { p_user_id: string; p_answers: Json }
+        Args: { p_answers: Json; p_user_id: string }
         Returns: boolean
       }
     }

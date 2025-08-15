@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { DocumentDecryption } from '@/components/DocumentDecryption';
 import { DocumentTemplateRenderer } from '@/components/DocumentTemplateRenderer';
+import { AdminPasswordDialog } from '@/components/AdminPasswordDialog';
 import DocumentActivityFeed from '@/components/DocumentActivityFeed';
 import DocumentTipsPanel from '@/components/DocumentTipsPanel';
 import { 
@@ -28,7 +29,8 @@ import {
   Edit,
   Eye,
   EyeOff,
-  Lock
+  Lock,
+  Shield
 } from 'lucide-react';
 
 export default function DocumentViewer() {
@@ -46,6 +48,8 @@ export default function DocumentViewer() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [showAdminPasswordDialog, setShowAdminPasswordDialog] = useState(false);
+  const [adminAccessGranted, setAdminAccessGranted] = useState(false);
 
   useEffect(() => {
     if (docId) {
@@ -339,6 +343,18 @@ export default function DocumentViewer() {
     }
   };
 
+  const handleAdminAccess = () => {
+    setAdminAccessGranted(true);
+    toast({
+      title: 'Admin Access Granted',
+      description: 'You can now view this document without decryption',
+    });
+  };
+
+  const canUseAdminAccess = () => {
+    return user && isRole(['admin', 'legal_reviewer']) && document?.encrypted_content;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -414,27 +430,86 @@ export default function DocumentViewer() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {document.encrypted_content && !decryptedContent ? (
-                <DocumentDecryption
-                  encryptedContent={document.encrypted_content}
-                  onDecrypted={handleDecryptedContent}
-                />
-              ) : decryptedContent ? (
+              {document.encrypted_content && !decryptedContent && !adminAccessGranted ? (
+                <div className="space-y-4">
+                  <DocumentDecryption
+                    encryptedContent={document.encrypted_content}
+                    onDecrypted={handleDecryptedContent}
+                  />
+                  
+                  {/* Admin/Reviewer Access Option */}
+                  {canUseAdminAccess() && (
+                    <div className="mt-4 p-4 border-t">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Shield className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">
+                            Admin/Reviewer Access
+                          </span>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowAdminPasswordDialog(true)}
+                        >
+                          Access without Decryption
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Use admin/reviewer password to view document content directly
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (decryptedContent || adminAccessGranted) ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="font-medium">
                       {isTemplateDocument() ? 'Document Content' : 'Decrypted Form Data'}
                     </h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setDecryptedContent(null)}
-                    >
-                      <EyeOff className="h-4 w-4 mr-2" />
-                      Hide Content
-                    </Button>
+                    <div className="flex gap-2">
+                      {adminAccessGranted && (
+                        <Badge variant="secondary" className="text-xs">
+                          <Shield className="h-3 w-3 mr-1" />
+                          Admin Access
+                        </Badge>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setDecryptedContent(null);
+                          setAdminAccessGranted(false);
+                        }}
+                      >
+                        <EyeOff className="h-4 w-4 mr-2" />
+                        Hide Content
+                      </Button>
+                    </div>
                   </div>
-                  {isTemplateDocument() ? (
+                  
+                  {adminAccessGranted ? (
+                    <div className="space-y-4">
+                      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 rounded-lg">
+                        <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
+                          <Shield className="h-4 w-4" />
+                          <span className="font-medium">Admin/Reviewer Access Mode</span>
+                        </div>
+                        <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">
+                          Document content is displayed using privileged access. Content remains encrypted in storage.
+                        </p>
+                      </div>
+                      
+                      {document.encrypted_content && (
+                        <div className="bg-muted p-4 rounded-lg">
+                          <p className="text-sm text-muted-foreground mb-2">Raw encrypted content (admin view):</p>
+                          <pre className="whitespace-pre-wrap text-xs font-mono bg-background p-3 rounded border max-h-96 overflow-auto">
+                            {document.encrypted_content.substring(0, 500)}...
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  ) : decryptedContent ? (
                     <DocumentTemplateRenderer
                       templateData={decryptedContent}
                       documentTitle={document.title}
@@ -775,6 +850,13 @@ export default function DocumentViewer() {
         <DocumentActivityFeed documentId={docId!} />
         <DocumentTipsPanel documentType={document.document_type} />
       </div>
+      
+      {/* Admin Password Dialog */}
+      <AdminPasswordDialog
+        open={showAdminPasswordDialog}
+        onOpenChange={setShowAdminPasswordDialog}
+        onSuccess={handleAdminAccess}
+      />
       </div>
     </AppLayout>
   );
