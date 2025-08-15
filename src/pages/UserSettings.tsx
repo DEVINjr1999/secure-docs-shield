@@ -103,7 +103,17 @@ export default function UserSettings() {
   const handleProfileUpdate = async () => {
     setIsUpdatingProfile(true);
     try {
-      const { error } = await updateProfile(formData);
+      // Only send fields that are safe to update from user settings
+      // Exclude sensitive fields like role and account_status
+      const safeUpdates = {
+        full_name: formData.full_name,
+        phone: formData.phone,
+        recovery_email: formData.recovery_email,
+        timezone: formData.timezone,
+        locale: formData.locale
+      };
+      
+      const { error } = await updateProfile(safeUpdates);
       
       if (error) {
         toast({
