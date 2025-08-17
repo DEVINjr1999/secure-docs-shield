@@ -353,7 +353,10 @@ export default function DocumentViewer() {
   };
 
   const canUseAdminAccess = () => {
-    return user && isRole(['admin', 'legal_reviewer']) && document?.encrypted_content;
+    const hasRole = user && isRole(['admin', 'legal_reviewer']);
+    const hasEncryptedContent = document?.encrypted_content;
+    console.log('Admin access check:', { hasRole, hasEncryptedContent, userRole: user?.role });
+    return hasRole && hasEncryptedContent;
   };
 
   if (loading) {

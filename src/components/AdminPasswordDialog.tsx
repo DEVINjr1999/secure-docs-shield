@@ -49,6 +49,7 @@ export function AdminPasswordDialog({
       }
 
       // Call the edge function to verify password
+      console.log('Attempting to verify admin password...');
       const { data, error } = await supabase.functions.invoke('verify-admin-password', {
         body: { password: password.trim() },
         headers: {
@@ -56,7 +57,10 @@ export function AdminPasswordDialog({
         }
       });
 
+      console.log('Edge function response:', { data, error });
+
       if (error) {
+        console.error('Edge function error:', error);
         throw error;
       }
 
