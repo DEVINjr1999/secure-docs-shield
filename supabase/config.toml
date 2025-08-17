@@ -5,3 +5,6 @@ verify_jwt = true
 
 [functions.password-reset-questions]
 verify_jwt = false
+
+[functions.verify-admin-password]
+verify_jwt = true

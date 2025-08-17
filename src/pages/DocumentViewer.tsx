@@ -345,6 +345,7 @@ export default function DocumentViewer() {
 
   const handleAdminAccess = () => {
     setAdminAccessGranted(true);
+    setDecryptedContent(document.encrypted_content); // Show encrypted content as-is for admin access
     toast({
       title: 'Admin Access Granted',
       description: 'You can now view this document without decryption',
