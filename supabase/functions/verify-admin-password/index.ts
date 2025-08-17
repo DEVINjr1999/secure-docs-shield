@@ -72,6 +72,14 @@ serve(async (req) => {
     // Verify password
     const isValidPassword = password === adminReviewerPassword;
     
+    // Debug logging (remove in production)
+    console.log('Password verification debug:', {
+      providedPassword: password,
+      storedPasswordExists: !!adminReviewerPassword,
+      storedPasswordLength: adminReviewerPassword?.length || 0,
+      passwordsMatch: isValidPassword
+    });
+    
     // Log the verification attempt
     await supabase.rpc('log_audit_event', {
       p_user_id: user.id,
