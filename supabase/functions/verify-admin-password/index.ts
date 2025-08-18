@@ -13,12 +13,25 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Function invoked, parsing request...');
     const { password } = await req.json();
+    console.log('Password received:', password ? '[PASSWORD PROVIDED]' : '[NO PASSWORD]');
     
     // Get environment variables
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const adminReviewerPassword = Deno.env.get('ADMIN_REVIEWER_PASSWORD')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const adminReviewerPassword = Deno.env.get('ADMIN_REVIEWER_PASSWORD');
+    
+    console.log('Environment check:', {
+      supabaseUrl: !!supabaseUrl,
+      serviceKey: !!supabaseServiceKey,
+      adminPassword: !!adminReviewerPassword,
+      adminPasswordLength: adminReviewerPassword?.length || 0
+    });
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Missing required environment variables');
+    }
     
     // Create Supabase client with service role
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -96,13 +109,21 @@ serve(async (req) => {
     console.log('Password verification:', { 
       userId: user.id, 
       role: profile.role, 
-      success: isValidPassword 
+      success: isValidPassword,
+      providedPasswordLength: password?.length || 0,
+      storedPasswordExists: !!adminReviewerPassword
     });
 
     return new Response(
       JSON.stringify({ 
         success: isValidPassword,
-        error: isValidPassword ? null : 'Invalid password'
+        error: isValidPassword ? null : 'Invalid password',
+        debug: {
+          passwordProvided: !!password,
+          passwordLength: password?.length || 0,
+          storedPasswordExists: !!adminReviewerPassword,
+          storedPasswordLength: adminReviewerPassword?.length || 0
+        }
       }),
       { 
         status: isValidPassword ? 200 : 401,
