@@ -74,10 +74,11 @@ serve(async (req) => {
     
     // Debug logging (remove in production)
     console.log('Password verification debug:', {
-      providedPassword: password,
+      providedPassword: password ? '[PROVIDED]' : '[EMPTY]',
       storedPasswordExists: !!adminReviewerPassword,
       storedPasswordLength: adminReviewerPassword?.length || 0,
-      passwordsMatch: isValidPassword
+      passwordsMatch: isValidPassword,
+      actualStoredPassword: adminReviewerPassword || '[NOT SET]'
     });
     
     // Log the verification attempt

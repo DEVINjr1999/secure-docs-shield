@@ -142,12 +142,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.warn('RPC failed, using fallback profile:', error);
     }
 
-    // Fallback: Create basic profile from user data
+    // Fallback: Try direct query first
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('deleted_at', null)
+        .single();
+      
+      if (data && !error) {
+        console.log('fetchProfile: Profile found via direct query:', data);
+        return data;
+      }
+    } catch (directError) {
+      console.warn('Direct profile query failed:', directError);
+    }
+
+    // Last resort fallback: Create basic profile from user data
     const fallbackProfile: Profile = {
       id: crypto.randomUUID(),
       user_id: userId,
       full_name: user?.email || 'User',
-      role: 'client',
+      role: 'client', // Only fallback to client if no profile exists
       account_status: 'active',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
