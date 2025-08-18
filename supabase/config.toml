@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.verify-admin-password]
 verify_jwt = true
+
+[functions.test-admin-secret]
+verify_jwt = false

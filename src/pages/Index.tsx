@@ -6,6 +6,7 @@ import { Shield, Lock, FileText, Users, Activity, ArrowRight, LogOut } from 'luc
 import { Link } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import TemplateSelector from '@/components/TemplateSelector';
+import { AdminSecretTest } from '@/components/AdminSecretTest';
 
 const Index = () => {
   const { user, profile, signOut } = useAuth();
@@ -136,6 +137,13 @@ const Index = () => {
               <Badge variant={profile.role === 'admin' ? 'destructive' : 'default'} className="mt-2">
                 {profile.role}
               </Badge>
+            </div>
+          )}
+          
+          {/* Debug tool for admin - only show to admin users */}
+          {user && profile?.role === 'admin' && (
+            <div className="mt-8">
+              <AdminSecretTest />
             </div>
           )}
         </div>
