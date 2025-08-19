@@ -107,10 +107,11 @@ export default function TemplateSelector() {
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <Button 
-            onClick={() => window.location.reload()} 
+            onClick={loadTemplates} 
             variant="outline"
+            disabled={loading}
           >
-            <RefreshCw className="mr-2 h-4 w-4" />
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh Templates
           </Button>
           <Button onClick={() => navigate('/app/upload')}>

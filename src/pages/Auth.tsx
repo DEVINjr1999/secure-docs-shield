@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -452,9 +452,9 @@ export default function Auth() {
                       />
                       <Label htmlFor="terms" className="text-sm">
                         I accept the{' '}
-                        <a href="/terms" className="text-primary hover:underline">
+                        <Link to="/terms" className="text-primary hover:underline">
                           Terms of Service
-                        </a>
+                        </Link>
                       </Label>
                     </div>
                     
